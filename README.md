@@ -1,10 +1,12 @@
 # simd-examples
 Simple SIMD examples for training purposes
 
-# TODO
+## TODO
 Add makefile
 
-# `average_sse.c`
+## Examples
+
+### `average_sse.c`
 
 Calculates the average of `N` values in scalar and using SSE on x86
 
