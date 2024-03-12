@@ -9,8 +9,8 @@
 int main() {
 
 	// allocate memory for array
-	float *A = (float *)malloc(N * sizeof(float));
-	if (!A) {
+	float *A = (float *)aligned_alloc(32, N * sizeof(float));
+    if (!A) {
 		fprintf(stderr, "error allocating %ld bytes\n", N * sizeof(float));
 		exit(1);
 	}
@@ -32,20 +32,18 @@ int main() {
 	avg1 /= (float)N;
 	gettimeofday(&tv2, NULL);
 
-	// SSE version
-	__m128 va = _mm_setzero_ps();
-	// Do N/4 iterations
-	for (int i=0; i < N; i += 4) {
-		// Add 4 elements at a time, add to previous result
-		va = _mm_add_ps(va, _mm_load_ps(&A[i]));
+	// AVX512 version   512 bits in contrast to 128 SSE
+    __m512 va = _mm512_setzero_ps();
+	// Do N/16 iterations
+    for (int i=0; i < N; i += 16) {
+		// Add 8 elements at a time, add to previous result
+		va = _mm512_add_ps(va, _mm512_load_ps(&A[i]));
 	}
-	// Add horizontally, use 2 steps in SSE
-	__m128 tmp = _mm_add_ps(va, _mm_movehl_ps(va, va));
-        tmp = _mm_add_ss(tmp, _mm_shuffle_ps(tmp, tmp, 1));
-	// Take first 32-bit float element
-	avg2 = _mm_cvtss_f32(tmp);
+	// Add horizontally, use 1 step in avx512
+	avg2 = _mm512_reduce_add_ps(va);
+    
 	// Divide by N of elements
-	avg2 /= (float)N * 4;
+	avg2 /= (float)N * 16;
 	gettimeofday(&tv3, NULL);
 
 	// Get time difference
@@ -68,9 +66,9 @@ int main() {
 		printf("updated diff2 tv_sec:%ld tv_usec:%ld\n", diff2.tv_sec, diff2.tv_usec);
 	}
 
-	printf("average of %ld elements = %f (scalar), %f (SSE)\n", N, avg1, avg2);
+	printf("average of %ld elements = %f (scalar), %f (AVX512)\n", N, avg1, avg2);
 	printf("scalar: %ld sec, usec: %ld\n", diff1.tv_sec, diff1.tv_usec);
-	printf("SSE   : %ld sec, usec: %ld\n", diff2.tv_sec, diff2.tv_usec);
+	printf("avx512   : %ld sec, usec: %ld\n", diff2.tv_sec, diff2.tv_usec);
 
 	// free the memory
 	free(A);
