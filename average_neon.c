@@ -13,14 +13,12 @@ int main() {
 
   // allocate memory for array
   // A array of size N
-  float *A;
-  posix_memalign((void **)&A, 16, N * sizeof(float));
-  // float *A = aligned_alloc(16, N * sizeof(float));
-
-  if (!A) {
-    fprintf(stderr, "error allocating %ld bytes\n", N * sizeof(float));
-    exit(1);
+  float *A = NULL;
+  if (posix_memalign((void **)&A, 16, N * sizeof(float)) != 0) {
+    perror("posix_memalign failed");
+    exit(EXIT_FAILURE);
   }
+  // float *A = aligned_alloc(16, N * sizeof(float)); (maybe use this instead)
 
   // fill array with numbers
   for (int i = 0; i < N; i++) {
@@ -81,9 +79,9 @@ int main() {
   diff2.tv_sec = tv3.tv_sec - tv2.tv_sec;
   diff2.tv_usec = tv3.tv_usec + (1000000 - tv2.tv_usec);
   printf("average of %ld elements = %f (Scalar)\n", N, avg1);
-  printf("scalar: %ld sec, usec: %d\n", diff1.tv_sec, diff1.tv_usec);
+  printf("scalar: %ld sec, usec: %ld\n", diff1.tv_sec, diff1.tv_usec);
   printf("average of %ld elements = %f (Neon)\n", N, avg2);
-  printf("NEON   : %ld sec, usec: %d\n", diff2.tv_sec, diff2.tv_usec);
+  printf("NEON   : %ld sec, usec: %ld\n", diff2.tv_sec, diff2.tv_usec);
 
   // free the memory
   free(A);
