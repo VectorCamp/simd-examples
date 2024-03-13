@@ -15,7 +15,11 @@ int main() {
 
     //allocate memory for array
     //A array of size N
-	float *A = (float *)malloc(N * sizeof(float));
+	float *A;
+	posix_memalign((void**)&A, 16, N * sizeof(float));
+	//float *A = aligned_alloc(16, N * sizeof(float));
+	
+	
 	if (!A) {
 		fprintf(stderr, "error allocating %ld bytes\n", N * sizeof(float));
 		exit(1);
@@ -53,25 +57,25 @@ int main() {
         float32x4_t input = vld1q_f32(&A[i]);
         vec=vaddq_f32(vec,input);
     }
-    
-    
-    //declare at as 32x2 because it will store only 2 floats after the addition takes place
-    //extract the 2 upper floats and the 2 lower floats and add them
-    float32x2_t upper_half=vadd_f32(vget_high_f32(vec), vget_low_f32(vec));
-	//float32x2_t upper_half=vadd_f32(vget_high_f32(vec), vdup_n_f32(0.0f));
-	//add the 2 floats that exist in the vector, we have the zeros because the half of the vector is 0
-	//the other half contains the 2 floats
-    float32x2_t lower_half=vadd_f32(vget_low_f32(vec), vdup_n_f32(0.0f));
 
+/* 	WAY 1 
 
-    //combine lower_half & upper_half into a single NEON vector creating a 4-lane vector
-	//store the single lane value from tmp_neon into the memory location pointed by &avg2
-	//the 0 indicates that the first lane of tmp_neon should be stored into avg2
-	float32x4_t tmp_neon = vcombine_f32(lower_half, upper_half);
-    vst1q_lane_f32(&avg2, tmp_neon, 0);
-    
-    //divide by N of elements
-    avg2 /= (float)N;
+	//we are using 32x2 because the vector will store only 2 floats after the additions
+	//pairwise add the 2 upper halfs and the 2 lower halfs
+	float32x2_t sum_halves = vpadd_f32(vget_low_f32(vec), vget_high_f32(vec));
+
+	//extract the 1st element of the sum_halves (the upper half addition)
+	//ectract the 2nd element of the sum_halves (the lower half addition)
+	//add them and save them on avg2 variable 
+	avg2 = vget_lane_f32(sum_halves, 0) + vget_lane_f32(sum_halves, 1);
+*/
+
+	//add all the 4 parts of the vector and save them in sum vector
+	float32_t sum = vaddvq_f32(vec);
+	
+    //divided by the total number of elements (N) multiplied 
+	//by 4 (since each iteration processes 4 elements at a time). 
+    avg2 = sum / (float)(N * 4);
 	gettimeofday(&tv3, NULL);
 
 
