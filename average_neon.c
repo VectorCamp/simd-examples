@@ -58,6 +58,7 @@ int main() {
     //declare at as 32x2 because it will store only 2 floats after the addition takes place
     //extract the 2 upper floats and the 2 lower floats and add them
     float32x2_t upper_half=vadd_f32(vget_high_f32(vec), vget_low_f32(vec));
+	//float32x2_t upper_half=vadd_f32(vget_high_f32(vec), vdup_n_f32(0.0f));
 	//add the 2 floats that exist in the vector, we have the zeros because the half of the vector is 0
 	//the other half contains the 2 floats
     float32x2_t lower_half=vadd_f32(vget_low_f32(vec), vdup_n_f32(0.0f));
