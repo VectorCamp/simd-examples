@@ -68,7 +68,7 @@ int main() {
 		printf("updated diff2 tv_sec:%ld tv_usec:%ld\n", diff2.tv_sec, diff2.tv_usec);
 	}
 
-	printf("average of %d elements = %f (scalar), %f (SSE)\n", N, avg1, avg2);
+	printf("average of %ld elements = %f (scalar), %f (SSE)\n", N, avg1, avg2);
 	printf("scalar: %ld sec, usec: %ld\n", diff1.tv_sec, diff1.tv_usec);
 	printf("SSE   : %ld sec, usec: %ld\n", diff2.tv_sec, diff2.tv_usec);
 
