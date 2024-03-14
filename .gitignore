@@ -2,3 +2,4 @@ average_avx2
 average_avx512
 average_sse
 gmon.out
+.clang-format
