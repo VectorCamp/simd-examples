@@ -9,8 +9,9 @@
 int main() {
 
 	// allocate memory for array
-	float *A = (float *)aligned_alloc(32, N * sizeof(float));
-    if (!A) {
+	float *A;
+	int ret = posix_memalign((void **)&A, 32, N * sizeof(float));
+	if (ret != 0 || !A) {
 		fprintf(stderr, "error allocating %ld bytes\n", N * sizeof(float));
 		exit(1);
 	}
@@ -40,16 +41,22 @@ int main() {
 		va = _mm256_add_ps(va, _mm256_load_ps(&A[i]));
 	}
 	// Add horizontally, use 4 steps in avx2
+	// va=[a,b,c,d,e,f,g,h]
 	__m256 tmp1 = _mm256_permute2f128_ps(va, va, 1);	//swap in half  
-    __m256 tmp2 = _mm256_add_ps(va, tmp1);				
-    tmp2 = _mm256_add_ps(tmp2, _mm256_permute_ps(tmp2, 0x4E)); // 0x4E: 01001110
-    tmp2 = _mm256_add_ps(tmp2, _mm256_permute_ps(tmp2, 0xB1)); // 0xB1: 10110001
-    
+    // tmp1=[e,f,g,h,a,b,c,d]
+	__m256 tmp2 = _mm256_add_ps(va, tmp1);	
+	//tmp2=	[a+e, b+f, c+g, d+h, e+a, f+b, g+c, h+d]
+    tmp2 = _mm256_add_ps(tmp2, _mm256_permute_ps(tmp2, 0x4E)); // 0x4E: 01001110 1 0 3 2
+    //premutation = [b+f, a+e, d+h, c+g, b+f, a+e, d+h, c+g]
+	//temp2 = [b+f+a+e, a+e+b+f, d+h+c+g, d+h+c+g, b+f+a+e, a+e+b+f, d+h+c+g, d+h+c+g]
+	tmp2 = _mm256_add_ps(tmp2, _mm256_permute_ps(tmp2, 0xB1)); // 0xB1: 10110001 2 3 0 1
+    //premutation = [d+h+c+g, d+h+c+g, b+f+a+e, a+e+b+f, d+h+c+g, d+h+c+g, b+f+a+e, a+e+b+f]
+	//temp2 = [b+f+a+e+d+h+c+g, b+f+a+e+d+h+c+g, b+f+a+e+d+h+c+g, b+f+a+e+d+h+c+g,b+f+a+e+d+h+c+g, b+f+a+e+d+h+c+g, b+f+a+e+d+h+c+g, b+f+a+e+d+h+c+g]
     
 	// Take first 32-bit float element  
     //(from 256bit temp2, it takes 1st 4 float and then it take the 1st float)
 	avg2 = _mm_cvtss_f32(_mm256_castps256_ps128(tmp2));
-	// Divide by N of elements
+	// Divide by N of elements * 8
 	avg2 /= (float)N * 8;
 	gettimeofday(&tv3, NULL);
 

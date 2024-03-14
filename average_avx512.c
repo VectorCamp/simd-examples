@@ -9,8 +9,9 @@
 int main() {
 
 	// allocate memory for array
-	float *A = (float *)aligned_alloc(32, N * sizeof(float));
-    if (!A) {
+	float *A;
+	int ret = posix_memalign((void **)&A, 32, N * sizeof(float));
+	if (ret != 0 || !A) {
 		fprintf(stderr, "error allocating %ld bytes\n", N * sizeof(float));
 		exit(1);
 	}
@@ -36,13 +37,13 @@ int main() {
     __m512 va = _mm512_setzero_ps();
 	// Do N/16 iterations
     for (int i=0; i < N; i += 16) {
-		// Add 8 elements at a time, add to previous result
+		// Add 16 elements at a time, add to previous result
 		va = _mm512_add_ps(va, _mm512_load_ps(&A[i]));
 	}
 	// Add horizontally, use 1 step in avx512
 	avg2 = _mm512_reduce_add_ps(va);
     
-	// Divide by N of elements
+	// Divide by N of elements * 16
 	avg2 /= (float)N * 16;
 	gettimeofday(&tv3, NULL);
 
