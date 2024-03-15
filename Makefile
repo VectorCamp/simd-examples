@@ -2,9 +2,9 @@ CC=gcc
 CFLAGS=-O3 -Wall
 ARCH := $(shell uname -m)
 ifeq ($(ARCH), x86_64)
-ALL= average_avx512 average_avx2 average_sse scalarxmat44_sse vect4xmat44_sse scalarxmat44 mat44xmat44
+ALL= average_avx512 average_avx2 average_sse scalarxmat44_sse vect4xmat44_sse scalarxmat44 mat44xmat44 mat44xmat44_sse
 all: $(ALL)
-average_sse: average_sse.c
+average_sse: average_sse.c 
 	$(CC) $(CFLAGS) average_sse.c -o average_sse
 
 average_avx2: average_avx2.c
@@ -20,7 +20,8 @@ scalarxmat44_sse: scalarxmat44_sse.c
 	$(CC) $(CFLAGS) scalarxmat44_sse.c -o scalarxmat44_sse
 vect4xmat44_sse: vect4xmat44_sse.c
 	$(CC) $(CFLAGS) -mfma vect4xmat44_sse.c -o vect4xmat44_sse
-
+mat44xmat44_sse: mat44xmat44_sse.c
+	$(CC) $(CFLAGS) -mfma mat44xmat44_sse.c -o mat44xmat44_sse
 
 else ifeq ($(ARCH), aarch64)
 	CFLAGS += -march=native
