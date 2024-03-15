@@ -65,7 +65,7 @@ main() {
         for (int j = 0; j < N; j += 4) {
             __m128 B_vec = _mm_load_ps(&B[i][j]);
             __m128 vectorA_vec = _mm_load_ps(&vectorA[j]);   // works because vectorA has 4 float elements
-            result_sse[i] = _mm_add_ps(result_sse[i], _mm_mul_ps(B_vec, vectorA_vec));
+            result_sse[i] = _mm_fmadd_ps(B_vec, vectorA_vec, result_sse[i]);
         }
     }
 

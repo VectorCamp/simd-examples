@@ -19,7 +19,7 @@ mat44xmat44: mat44xmat44.c
 scalarxmat44_sse: scalarxmat44_sse.c
 	$(CC) $(CFLAGS) scalarxmat44_sse.c -o scalarxmat44_sse
 vect4xmat44_sse: vect4xmat44_sse.c
-	$(CC) $(CFLAGS) vect4xmat44_sse.c -o vect4xmat44_sse
+	$(CC) $(CFLAGS) -mfma vect4xmat44_sse.c -o vect4xmat44_sse
 
 
 else ifeq ($(ARCH), aarch64)
