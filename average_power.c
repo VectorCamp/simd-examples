@@ -40,7 +40,7 @@ int main() {
   // POWER VERSION (george mermigkis)
   // declare vector that includes 4 floats & initialize them with val=0
   vector float vec = {0.0f, 0.0f, 0.0f, 0.0f};
-
+  
   // do N/4 iterations because every vector will take 4 loops each time
   for (int i = 0; i < N; i += 4) {
 
@@ -50,10 +50,14 @@ int main() {
     vec = vec_add(vec, input);
   }
 
-  // add all the 4 parts of the vector and save them in sum vector
-  float sum_array[4];
-  vec_st(vec, 0, sum_array);
-  avg2 = sum_array[0] + sum_array[1] + sum_array[2] + sum_array[3];
+  //shift vector 8 bytes to the left
+  //shift vector 4 bytes to the left
+  vec = vec_add(vec, vec_sld(vec, vec, 8));
+  vec = vec_add(vec, vec_sld(vec, vec, 4));
+
+
+  //store the result that is contained now in the first element of vector vec into avg2
+  vec_ste(vec, 0, &avg2);
 
   // divided by the total number of elements (N) multiplied
   avg2 /= (float)(N * 4);
