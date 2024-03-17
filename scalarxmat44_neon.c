@@ -13,21 +13,10 @@ int main() {
   float lamda = 5.0;
   int count = 0;
 
-  // alocate alligned memory for both A,B matrices
+  // static alligned memory
   //(16 byte allignment because of NEON intrinsics)
-  float *A_memory = NULL;
-  float *B_memory = NULL;
-  if (posix_memalign((void **)&A_memory, 16, sizeof(float[N][N])) != 0) {
-    fprintf(stderr, "error allocating memory for matrix A\n");
-    exit(1);
-  }
-  if (posix_memalign((void **)&B_memory, 16, sizeof(float[N][N])) != 0) {
-    fprintf(stderr, "error allocating memory for matrix B\n");
-    exit(1);
-  }
-
-  float(*A)[N] = (float(*)[N])A_memory;
-  float(*B)[N] = (float(*)[N])B_memory;
+  float A[N][N] __attribute__((aligned(16)));
+  float B[N][N] __attribute__((aligned(16)));
 
   // fill array with numbers
   for (int i = 0; i < 4; i++) {
@@ -110,7 +99,5 @@ int main() {
   printf("Scalar: %ld sec, usec: %ld\n", diff1.tv_sec, diff1.tv_usec);
   printf("NEON   : %ld sec, usec: %ld\n", diff2.tv_sec, diff2.tv_usec);
 
-  // free the memory
-  free(A);
-  free(B);
+
 }
