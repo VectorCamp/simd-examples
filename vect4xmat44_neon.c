@@ -12,55 +12,29 @@ int main() {
     int are_equal_1 = 1;
     int are_equal_2 = 1;
     int count = 0;
-    
-     //declare vector and allocate alligned memory for it 
-    float *vectorA = NULL;
-    if (posix_memalign((void **)&vectorA, 16, N * sizeof(float)) != 0) {
-        perror("vector's posix_memalign failed");
-        exit(EXIT_FAILURE);
-    }
 
-    //declare matrix and allocate alligned memory for it
-    float *B_memory = NULL;
-    if (posix_memalign((void **)&B_memory, 16, sizeof(float[N][N])) != 0) {
-        fprintf(stderr, "error allocating memory for matrix B\n");
-        exit(1);
-    }
-    float(*B)[N] = (float(*)[N])B_memory;
+    // Declare and allocate memory for vectorA
+    float vectorA[N] __attribute__((aligned(16)));
 
+    // Declare and allocate memory for matrix B
+    float B[N][N] __attribute__((aligned(16)));
 
-    //declare and allocate alligned memory for 
-    //result vector1 for Vector x Matrix
+    // Declare and allocate memory for resultVector1_neon (Vector x Matrix)
     //this will store the result from NEON 1x4
-    float *resultVector1_neon = NULL;
-    if (posix_memalign((void **)&resultVector1_neon, 16, N * sizeof(float)) != 0) {
-        perror("resultVector1_neon's posix_memalign failed");
-        exit(EXIT_FAILURE);
-    }
+    float resultVector1_neon[N] __attribute__((aligned(16)));
 
-    //declare and allocate alligned memory for
-    //result vector2 for Matrix x Vector
+    // Declare and allocate memory for resultVector2_neon (Matrix x Vector)
     //this will store the result from NEON 4x1
-    float *resultVector2_neon = NULL;
-    if (posix_memalign((void **)&resultVector2_neon, 16, N * sizeof(float)) != 0) {
-        perror("resultVector2_neon's posix_memalign failed");
-        exit(EXIT_FAILURE);
-    }
+    float resultVector2_neon[N] __attribute__((aligned(16)));
 
-    //declare vectors for scalar version
-    //this will store the results from SCALAR Vector x Matrix
-    float *resultVector1_scalar = NULL;
-    if (posix_memalign((void **)&resultVector1_scalar, 16, N * sizeof(float)) != 0) {
-        perror("resultVector1_scalar's posix_memalign failed");
-        exit(EXIT_FAILURE);
-    }
+    // Declare and allocate memory for resultVector1_scalar (Vector x Matrix)
+    // scalar version
+    float resultVector1_scalar[N] __attribute__((aligned(16)));
 
-    //this will store the results from SCALAR Matrix x Vector
-    float *resultVector2_scalar = NULL;
-    if (posix_memalign((void **)&resultVector2_scalar, 16, N * sizeof(float)) != 0) {
-        perror("resultVector1_scalar's posix_memalign failed");
-        exit(EXIT_FAILURE);
-    }
+    // Declare and allocate memory for resultVector2_scalar (Matrix x Vector)
+    //scalar version
+    float resultVector2_scalar[N] __attribute__((aligned(16)));
+
 
 
     //fill vector
@@ -157,11 +131,5 @@ int main() {
         printf("Vector x Matrix (2) wrong\n");
     }
 
-    // free the memory
-    free(vectorA);
-    free(B);
-    free(resultVector1_neon);
-    free(resultVector2_neon);
-    free(resultVector1_scalar);
-    free(resultVector2_scalar);
+
 }
