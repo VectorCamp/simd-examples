@@ -20,12 +20,9 @@ main() {
     // fill array with numbers
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
-            A[i][j] = (float) rand() / RAND_MAX * 4;
-        }
-    }
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            B[i][j] = (float) A[i][j];
+            float random_num = (float) rand() / RAND_MAX * 4;
+            A[i][j] = random_num;
+            B[i][j] = random_num;
         }
     }
 
@@ -63,7 +60,7 @@ main() {
     }
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
-            if (fabs(A[i] - B[i]) > epsilon) {
+            if (fabs(A[i] - B[i]) == 0) {
                 are_equal = 0;
                 break;
             }
