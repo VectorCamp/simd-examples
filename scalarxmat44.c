@@ -9,7 +9,6 @@
 int
 main() {
 
-    float epsilon = 0.00001f;
     int are_equal = 1;
     float lamda = 5.0;
     float A[4][4] __attribute__((aligned(16)));
