@@ -5,7 +5,7 @@
 #include <string.h>
 #include <sys/time.h>
 #include <time.h>
-#define N 1000
+#define N 10004
 
 int
 main() {
@@ -42,14 +42,17 @@ main() {
 
     // SSE version
     for (int l = 0; l < N; l++) {
+        __m128 row1 = _mm_load_ps(&B[0][0]);
+        __m128 row2 = _mm_load_ps(&B[1][0]);
+        __m128 row3 = _mm_load_ps(&B[2][0]);
+        __m128 row4 = _mm_load_ps(&B[3][0]);
         for (int i = 0; i < 4; i++) {
-            __m128 vector = _mm_setzero_ps();
-            for (int k = 0; k < 4; k++) {
-                __m128 vA = _mm_set1_ps(A[i][k]);     // load+broadcast
-                __m128 vB = _mm_loadu_ps(&B[k][0]);   // BT[k][j+0..3]
-                vector = _mm_fmadd_ps(vA, vB, vector);
-            }
-            _mm_storeu_ps(&implResult[i][0], vector);
+            __m128 brod1 = _mm_set1_ps(A[i][0]);
+            __m128 brod2 = _mm_set1_ps(A[i][1]);
+            __m128 brod3 = _mm_set1_ps(A[i][2]);
+            __m128 brod4 = _mm_set1_ps(A[i][3]);
+            __m128 row = _mm_add_ps(_mm_add_ps(_mm_mul_ps(brod1, row1), _mm_mul_ps(brod2, row2)), _mm_add_ps(_mm_mul_ps(brod3, row3), _mm_mul_ps(brod4, row4)));
+            _mm_store_ps(&implResult[i][0], row);
         }
     }
     clock_gettime(CLOCK_MONOTONIC, &end);
