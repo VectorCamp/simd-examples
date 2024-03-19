@@ -6,6 +6,7 @@
 #include <sys/time.h>
 
 #define N 4
+#define LOOPS 1000000000
 
 int main() {
 
@@ -35,9 +36,11 @@ int main() {
   gettimeofday(&tv1, NULL);
 
   // Scalar version
-  for (int i = 0; i < 4; i++) {
-    for (int j = 0; j < 4; j++) {
-      A[i][j] = lamda * A[i][j];
+  for(int k=0; k<LOOPS; k++){
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 4; j++) {
+        A[i][j] = lamda * A[i][j];
+      }
     }
   }
   gettimeofday(&tv2, NULL);
@@ -47,13 +50,15 @@ int main() {
 
   // becase we have a 4x4 array we take each row with 1 vector
   // otherwise we would to use a different mechanism
-  for (int i = 0; i < 4; i++) {
+  for(int k=0; k<LOOPS; k++){
+    for (int i = 0; i < 4; i++) {
 
-    // load 4 float values from the array B, multiply each value with lamda
-    // and then store result back to B array
-    float32x4_t array_in = vld1q_f32(&B[i][0]);
-    array_in = vmulq_f32(array_in, lamda_vector);
-    vst1q_f32(&B[i][0], array_in);
+      // load 4 float values from the array B, multiply each value with lamda
+      // and then store result back to B array
+      float32x4_t array_in = vld1q_f32(&B[i][0]);
+      array_in = vmulq_f32(array_in, lamda_vector);
+      vst1q_f32(&B[i][0], array_in);
+    }
   }
 
   gettimeofday(&tv3, NULL);
