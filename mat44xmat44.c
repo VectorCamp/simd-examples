@@ -1,80 +1,74 @@
 #include <immintrin.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/time.h>
 
-#define N 4
+#include <time.h>
+#define N 1000000000
 
 int
 main() {
 
     // allocate memory for array
     int are_equal = 1;
-    int count = 0;
-    float A[N][N] __attribute__((aligned(16)));
-    float B[N][N] __attribute__((aligned(16)));
-    float result[N][N] __attribute__((aligned(16)));
-    float implResult[N][N] __attribute__((aligned(16)));
-    // fill array with numbers
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
-            A[i][j] = (float) count++;
-        }
-    }
-    // fill array with numbers
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
-            B[i][j] = (float) count--;
+    float A[4][4] __attribute__((aligned(16)));
+    float B[4][4] __attribute__((aligned(16)));
+    float result[4][4] __attribute__((aligned(16)));
+    float implResult[4][4] __attribute__((aligned(16)));
+    struct timespec start, mid, end;
+    srand(time(NULL));
+    // fill array with random numbers
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            A[i][j] = (float) rand() / RAND_MAX * 4;
+            B[i][j] = (float) rand() / RAND_MAX * 4;
         }
     }
 
-    struct timeval tv1, tv2, tv3, diff1, diff2;
-    gettimeofday(&tv1, NULL);
+    clock_gettime(CLOCK_MONOTONIC, &start);
 
     // normal scalar version
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
-            result[i][j] = 0.0f;
-            for (int k = 0; k < N; k++) {
-                result[i][j] += A[i][k] * B[k][j];
+    for (int l = 0; l < N; l++) {
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                result[i][j] = 0.0f;
+                for (int k = 0; k < 4; k++) {
+                    result[i][j] += A[i][k] * B[k][j];
+                }
             }
         }
     }
-    gettimeofday(&tv2, NULL);
-
+    clock_gettime(CLOCK_MONOTONIC, &mid);
     // using this as a placeholder for the implementations
     // replace this loop with (sse,avx2,avx512...)
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
-            implResult[i][j] = 0.0f;
-            for (int k = 0; k < N; k++) {
-                implResult[i][j] += A[i][k] * B[k][j];
+    for (int l = 0; l < N; l++) {
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                implResult[i][j] = 0.0f;
+                for (int k = 0; k < 4; k++) {
+                    implResult[i][j] += A[i][k] * B[k][j];
+                }
             }
         }
     }
-    gettimeofday(&tv3, NULL);
+    clock_gettime(CLOCK_MONOTONIC, &end);
 
-    // Get time difference
-    // https://stackoverflow.com/questions/1444428/time-stamp-in-the-c-programming-language
-    diff1.tv_sec = tv2.tv_sec - tv1.tv_sec;
-    diff1.tv_usec = tv2.tv_usec + (1000000 - tv1.tv_usec);
-    diff2.tv_sec = tv3.tv_sec - tv2.tv_sec;
-    diff2.tv_usec = tv3.tv_usec + (1000000 - tv2.tv_usec);
-
-    while (diff1.tv_usec > 1000000) {
-        diff1.tv_sec++;
-        diff1.tv_usec -= 1000000;
-        printf("updated diff1 tv_sec:%ld tv_usec:%ld\n", diff1.tv_sec, diff1.tv_usec);
+    long seconds1 = mid.tv_sec - start.tv_sec;
+    long nanoseconds1 = mid.tv_nsec - start.tv_nsec;
+    if (nanoseconds1 < 0) {
+        seconds1--;
+        nanoseconds1 += 1000000000;
     }
-    while (diff2.tv_usec > 1000000) {
-        diff2.tv_sec++;
-        diff2.tv_usec -= 1000000;
-        printf("updated diff2 tv_sec:%ld tv_usec:%ld\n", diff2.tv_sec, diff2.tv_usec);
+    long seconds2 = end.tv_sec - mid.tv_sec;
+    long nanoseconds2 = end.tv_nsec - mid.tv_nsec;
+    if (nanoseconds2 < 0) {
+        seconds2--;
+        nanoseconds2 += 1000000000;
     }
-
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
             if (result[i][j] != implResult[i][j]) {
                 are_equal = 0;
                 break;
@@ -86,6 +80,6 @@ main() {
     } else {
         printf("Array result and implResult are not the same\n");
     }
-    printf("scalar: %ld sec, usec: %ld\n", diff1.tv_sec, diff1.tv_usec);
-    printf("SSE   : %ld sec, usec: %ld\n", diff2.tv_sec, diff2.tv_usec);
+    printf("scalar: %ld.%09ld seconds\n", seconds1, nanoseconds1);
+    printf("scalar placeholder   : %ld.%09ld seconds\n", seconds2, nanoseconds2);
 }
