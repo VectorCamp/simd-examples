@@ -12,38 +12,20 @@ main() {
     // allocate memory for array
     int are_equal = 1;
     int count = 0;
-    float(*A)[N];
-    if (posix_memalign((void **) &A, 16, sizeof(float[N][N])) != 0) {
-        fprintf(stderr, "error allocating memory for matrix B\n");
-        exit(1);
-    }
-
-    float(*B)[N];
-    if (posix_memalign((void **) &B, 16, sizeof(float[N][N])) != 0) {
-        fprintf(stderr, "error allocating memory for matrix B\n");
-        exit(1);
-    }
-
-    float(*result)[N];
-    if (posix_memalign((void **) &result, 16, sizeof(float[N][N])) != 0) {
-        fprintf(stderr, "error allocating memory for matrix B\n");
-        exit(1);
-    }
-
-    float(*implResult)[N];
-    if (posix_memalign((void **) &implResult, 16, sizeof(float[N][N])) != 0) {
-        fprintf(stderr, "error allocating memory for matrix B\n");
-        exit(1);
-    }
-    // fill vector with numbers
+    float A[N][N] __attribute__((aligned(16)));
+    float B[N][N] __attribute__((aligned(16)));
+    float result[N][N] __attribute__((aligned(16)));
+    float implResult[N][N] __attribute__((aligned(16)));
+    // fill array with numbers
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
             A[i][j] = (float) count++;
         }
     }
+    // fill array with different numbers
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
-            B[i][j] = (float) count--;
+            B[i][j] = 2 + (float) count--;
         }
     }
 
@@ -62,26 +44,20 @@ main() {
     gettimeofday(&tv2, NULL);
 
     // SSE version
-    __m128 result_sse[N][N];
+    __m128 result_sse[N];   // 4 * 4(=128bit)
     // Initialize result_sse with zeros
     for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
-            result_sse[i][j] = _mm_setzero_ps();
+        result_sse[i] = _mm_setzero_ps();
+    }
+    for (int i = 0; i < N; i++) {
+        for (int k = 0; k < N; k++) {
+            __m128 A_vec = _mm_set1_ps(A[i][k]);    // vector filled with 1 element
+            __m128 B_vec = _mm_load_ps(&B[k][0]);   // column of B
+            result_sse[i] = _mm_fmadd_ps(A_vec, B_vec, result_sse[i]);
         }
     }
     for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j += 4) {
-            for (int k = 0; k < N; k++) {
-                __m128 A_vec = _mm_set1_ps(A[i][k]);                                       // ena stoixeio
-                __m128 B_vec = _mm_load_ps(&B[k][j]);                                      // sthlh
-                result_sse[i][j / 4] = _mm_fmadd_ps(A_vec, B_vec, result_sse[i][j / 4]);   // j is incremented by 4
-            }
-        }
-    }
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j += 4) {
-            _mm_store_ps(&implResult[i][j], result_sse[i][j / 4]);
-        }
+        _mm_store_ps(&implResult[i][0], result_sse[i]);
     }
     gettimeofday(&tv3, NULL);
 
@@ -118,10 +94,4 @@ main() {
     }
     printf("scalar: %ld sec, usec: %ld\n", diff1.tv_sec, diff1.tv_usec);
     printf("SSE   : %ld sec, usec: %ld\n", diff2.tv_sec, diff2.tv_usec);
-
-    // free the memory
-    free(result);
-    free(implResult);
-    free(A);
-    free(B);
 }
