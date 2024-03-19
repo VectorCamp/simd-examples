@@ -12,35 +12,17 @@ main() {
     // allocate memory for array
     int are_equal = 1;
     int count = 0;
-    float(*A)[N];
-    if (posix_memalign((void **) &A, 16, sizeof(float[N][N])) != 0) {
-        fprintf(stderr, "error allocating memory for matrix B\n");
-        exit(1);
-    }
-
-    float(*B)[N];
-    if (posix_memalign((void **) &B, 16, sizeof(float[N][N])) != 0) {
-        fprintf(stderr, "error allocating memory for matrix B\n");
-        exit(1);
-    }
-
-    float(*result)[N];
-    if (posix_memalign((void **) &result, 16, sizeof(float[N][N])) != 0) {
-        fprintf(stderr, "error allocating memory for matrix B\n");
-        exit(1);
-    }
-
-    float(*implResult)[N];
-    if (posix_memalign((void **) &implResult, 16, sizeof(float[N][N])) != 0) {
-        fprintf(stderr, "error allocating memory for matrix B\n");
-        exit(1);
-    }
-    // fill vector with numbers
+    float A[N][N] __attribute__((aligned(16)));
+    float B[N][N] __attribute__((aligned(16)));
+    float result[N][N] __attribute__((aligned(16)));
+    float implResult[N][N] __attribute__((aligned(16)));
+    // fill array with numbers
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
             A[i][j] = (float) count++;
         }
     }
+    // fill array with numbers
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
             B[i][j] = (float) count--;
@@ -61,8 +43,8 @@ main() {
     }
     gettimeofday(&tv2, NULL);
 
-    //
-
+    // using this as a placeholder for the implementations
+    // replace this loop with (sse,avx2,avx512...)
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
             implResult[i][j] = 0.0f;
@@ -106,10 +88,4 @@ main() {
     }
     printf("scalar: %ld sec, usec: %ld\n", diff1.tv_sec, diff1.tv_usec);
     printf("SSE   : %ld sec, usec: %ld\n", diff2.tv_sec, diff2.tv_usec);
-
-    // free the memory
-    free(result);
-    free(implResult);
-    free(A);
-    free(B);
 }
