@@ -12,29 +12,12 @@ main() {
     // allocate memory for array
     int are_equal = 1;
     int count = 0;
-    float *vectorA;
-    if (posix_memalign((void **) &vectorA, 16, N * sizeof(float)) != 0) {
-        fprintf(stderr, "error allocating memory for vectorA\n");
-        exit(1);
-    }
-
-    float(*B)[N];
-    if (posix_memalign((void **) &B, 16, sizeof(float[N][N])) != 0) {
-        fprintf(stderr, "error allocating memory for matrix B\n");
-        exit(1);
-    }
-
-    float *result;
-    if (posix_memalign((void **) &result, 16, N * sizeof(float)) != 0) {
-        fprintf(stderr, "error allocating memory for result vector\n");
-        exit(1);
-    }
-
-    float *implResult;
-    if (posix_memalign((void **) &implResult, 16, N * sizeof(float)) != 0) {
-        fprintf(stderr, "error allocating memory for implResult vector\n");
-        exit(1);
-    }
+    float B[N][N] __attribute__((aligned(16)));
+    float vectorA[N] __attribute__((aligned(16)));
+    // result vector
+    float result[N] __attribute__((aligned(16)));
+    // implResult
+    float implResult[N] __attribute__((aligned(16)));
     // fill vector with numbers
     for (int i = 0; i < N; i++) {
         vectorA[i] = (float) i;
@@ -109,10 +92,4 @@ main() {
     }
     printf("scalar: %ld sec, usec: %ld\n", diff1.tv_sec, diff1.tv_usec);
     printf("SSE   : %ld sec, usec: %ld\n", diff2.tv_sec, diff2.tv_usec);
-
-    // free the memory
-    free(result);
-    free(implResult);
-    free(vectorA);
-    free(B);
 }

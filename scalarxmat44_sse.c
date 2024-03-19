@@ -13,16 +13,8 @@ main() {
     int are_equal = 1;
     float lamda = 5.0;
     int count = 0;
-    float(*A)[N] = malloc(sizeof(float[N][N]));
-    if (!A) {
-        fprintf(stderr, "error allocating memory for matrix\n");
-        exit(1);
-    }
-    float(*B)[N] = malloc(sizeof(float[N][N]));
-    if (!B) {
-        fprintf(stderr, "error allocating memory for matrix\n");
-        exit(1);
-    }
+    float A[N][N] __attribute__((aligned(16)));
+    float B[N][N] __attribute__((aligned(16)));
     // fill array with numbers
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
@@ -96,8 +88,4 @@ main() {
     }
     printf("scalar: %ld sec, usec: %ld\n", diff1.tv_sec, diff1.tv_usec);
     printf("SSE   : %ld sec, usec: %ld\n", diff2.tv_sec, diff2.tv_usec);
-
-    // free the memory
-    free(A);
-    free(B);
 }
