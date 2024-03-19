@@ -8,7 +8,7 @@
 
 int
 main() {
-
+    float epsilon = 0.00001f;
     int are_equal = 1;
     float lamda = 5.0;
     float A[4][4] __attribute__((aligned(16)));
@@ -59,7 +59,7 @@ main() {
     }
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
-            if (fabs(A[i] - B[i]) == 0) {
+            if (fabs(A[i][j] - B[i][j]) > epsilon) {
                 are_equal = 0;
                 break;
             }
