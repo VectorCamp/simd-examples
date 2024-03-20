@@ -5,7 +5,7 @@
 #include <string.h>
 #include <sys/time.h>
 #include <time.h>
-#define N 10004
+#define N 10000
 
 int
 main() {
@@ -41,18 +41,36 @@ main() {
     clock_gettime(CLOCK_MONOTONIC, &mid);
 
     // SSE version
+    // Transpose B
+    float BT[4][4];
+    __m128 row1 = _mm_load_ps(&B[0][0]);
+    __m128 row2 = _mm_load_ps(&B[1][0]);
+    __m128 row3 = _mm_load_ps(&B[2][0]);
+    __m128 row4 = _mm_load_ps(&B[3][0]);
+
+    __m128 tmp1 = _mm_shuffle_ps(row1, row2, _MM_SHUFFLE(1, 0, 1, 0));
+    __m128 tmp2 = _mm_shuffle_ps(row1, row2, _MM_SHUFFLE(3, 2, 3, 2));
+    __m128 tmp3 = _mm_shuffle_ps(row3, row4, _MM_SHUFFLE(1, 0, 1, 0));
+    __m128 tmp4 = _mm_shuffle_ps(row3, row4, _MM_SHUFFLE(3, 2, 3, 2));
+
+    row1 = _mm_shuffle_ps(tmp1, tmp3, _MM_SHUFFLE(2, 0, 2, 0));
+    row2 = _mm_shuffle_ps(tmp1, tmp3, _MM_SHUFFLE(3, 1, 3, 1));
+    row3 = _mm_shuffle_ps(tmp2, tmp4, _MM_SHUFFLE(2, 0, 2, 0));
+    row4 = _mm_shuffle_ps(tmp2, tmp4, _MM_SHUFFLE(3, 1, 3, 1));
+
+    _mm_store_ps(&BT[0][0], row1);
+    _mm_store_ps(&BT[1][0], row2);
+    _mm_store_ps(&BT[2][0], row3);
+    _mm_store_ps(&BT[3][0], row4);
     for (int l = 0; l < N; l++) {
-        __m128 row1 = _mm_load_ps(&B[0][0]);
-        __m128 row2 = _mm_load_ps(&B[1][0]);
-        __m128 row3 = _mm_load_ps(&B[2][0]);
-        __m128 row4 = _mm_load_ps(&B[3][0]);
+        // Compute product
         for (int i = 0; i < 4; i++) {
-            __m128 brod1 = _mm_set1_ps(A[i][0]);
-            __m128 brod2 = _mm_set1_ps(A[i][1]);
-            __m128 brod3 = _mm_set1_ps(A[i][2]);
-            __m128 brod4 = _mm_set1_ps(A[i][3]);
-            __m128 row = _mm_add_ps(_mm_add_ps(_mm_mul_ps(brod1, row1), _mm_mul_ps(brod2, row2)), _mm_add_ps(_mm_mul_ps(brod3, row3), _mm_mul_ps(brod4, row4)));
-            _mm_store_ps(&implResult[i][0], row);
+            __m128 a = _mm_load_ps(&A[i][0]);
+            for (int j = 0; j < 4; j++) {
+                __m128 b = _mm_load_ps(&BT[j][0]);
+                __m128 result = _mm_dp_ps(a, b, 0xf1);
+                _mm_store_ss(&implResult[i][j], result);
+            }
         }
     }
     clock_gettime(CLOCK_MONOTONIC, &end);
