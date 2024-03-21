@@ -43,21 +43,25 @@ main() {
     // SSE version
     // Transpose B
     float BT[4][4];
+    // Load the first four elements of each row of B into 128-bit vectors
     __m128 row1 = _mm_load_ps(&B[0][0]);
     __m128 row2 = _mm_load_ps(&B[1][0]);
     __m128 row3 = _mm_load_ps(&B[2][0]);
     __m128 row4 = _mm_load_ps(&B[3][0]);
 
+    // Interleave the first two elements of row1 and row2, and the last two elements of row1 and row2
     __m128 tmp1 = _mm_shuffle_ps(row1, row2, _MM_SHUFFLE(1, 0, 1, 0));
     __m128 tmp2 = _mm_shuffle_ps(row1, row2, _MM_SHUFFLE(3, 2, 3, 2));
     __m128 tmp3 = _mm_shuffle_ps(row3, row4, _MM_SHUFFLE(1, 0, 1, 0));
     __m128 tmp4 = _mm_shuffle_ps(row3, row4, _MM_SHUFFLE(3, 2, 3, 2));
 
+    // Interleave the first two elements of tmp1 and tmp3, and the last two elements of tmp1 and tmp3
     row1 = _mm_shuffle_ps(tmp1, tmp3, _MM_SHUFFLE(2, 0, 2, 0));
     row2 = _mm_shuffle_ps(tmp1, tmp3, _MM_SHUFFLE(3, 1, 3, 1));
     row3 = _mm_shuffle_ps(tmp2, tmp4, _MM_SHUFFLE(2, 0, 2, 0));
     row4 = _mm_shuffle_ps(tmp2, tmp4, _MM_SHUFFLE(3, 1, 3, 1));
 
+    // Store the results back into the BT array
     _mm_store_ps(&BT[0][0], row1);
     _mm_store_ps(&BT[1][0], row2);
     _mm_store_ps(&BT[2][0], row3);
@@ -65,9 +69,12 @@ main() {
     for (int l = 0; l < N; l++) {
         // Compute product
         for (int i = 0; i < 4; i++) {
+            // Load the first four elements of the i-th row of A into a 128-bit vector
             __m128 a = _mm_load_ps(&A[i][0]);
             for (int j = 0; j < 4; j++) {
+                // Load the first four elements of the j-th row of BT into a 128-bit vector
                 __m128 b = _mm_load_ps(&BT[j][0]);
+                // Compute the dot product of a and b
                 __m128 result = _mm_dp_ps(a, b, 0xf1);
                 _mm_store_ss(&implResult[i][j], result);
             }
