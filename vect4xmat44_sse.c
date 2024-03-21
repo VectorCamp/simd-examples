@@ -49,15 +49,20 @@ main() {
         for (int i = 0; i < 4; i++) {
             result_sse[i] = _mm_setzero_ps();
             for (int j = 0; j < 4; j += 4) {
+                // Load four consecutive elements from the B array into a 128-bit vector
                 __m128 B_vec = _mm_load_ps(&B[i][j]);
+                // Load four consecutive elements from the vectorA array into a 128-bit vector
                 __m128 vectorA_vec = _mm_load_ps(&vectorA[j]);   // works because vectorA has 4 float elements
+                // Multiply the elements of B_vec and vectorA_vec, add the result to result_sse[i]
                 result_sse[i] = _mm_fmadd_ps(B_vec, vectorA_vec, result_sse[i]);
             }
         }
 
         // Convert back to regular float array
         for (int i = 0; i < 4; i++) {
+            // Add the high and low halves of result_sse[i] together
             __m128 tmp = _mm_add_ps(result_sse[i], _mm_movehl_ps(result_sse[i], result_sse[i]));
+            // Add the first and second elements of tmp together
             tmp = _mm_add_ss(tmp, _mm_shuffle_ps(tmp, tmp, 1));
             // Take first 32-bit float element
             implResult[i] = _mm_cvtss_f32(tmp);
