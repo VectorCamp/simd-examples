@@ -47,7 +47,7 @@ int main() {
 
   // NEON Version
   float32x4_t lamda_vector = vdupq_n_f32(lamda);
-
+  float32x4_t array_in = vdupq_n_f32(0.0f);
   // becase we have a 4x4 array we take each row with 1 vector
   // otherwise we would to use a different mechanism
   for(int k=0; k<LOOPS; k++){
@@ -55,7 +55,7 @@ int main() {
 
       // load 4 float values from the array B, multiply each value with lamda
       // and then store result back to B array
-      float32x4_t array_in = vld1q_f32(&B[i][0]);
+      array_in = vld1q_f32(&B[i][0]);
       array_in = vmulq_f32(array_in, lamda_vector);
       vst1q_f32(&B[i][0], array_in);
     }
