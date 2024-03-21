@@ -6,7 +6,7 @@
 #include <sys/time.h>
 
 #define N 4
-#define LOOPS 100000000
+#define LOOPS 1
 
 int main() {
 
@@ -64,7 +64,8 @@ int main() {
 
   // NEON VERSION for Matrix x Vector
   float32x4_t result1_neon;
-  float32x4_t BVec, AVec;
+  float32x4_t BVec = vdupq_n_f32(0.0f);
+  float32x4_t AVec = vld1q_f32(vectorA);
 
   for (int j = 0; j < LOOPS; j++) {
     for (int i = 0; i < N; i++) {
@@ -72,8 +73,6 @@ int main() {
       for (int j = 0; j < N; j += 4) {
         // Load 4 elements of B[i][j] into BVec
         BVec = vld1q_f32(&B[i][j]);
-        // Load 4 elements of vectorA[j] into AVec
-        AVec = vld1q_f32(&vectorA[j]);
         // Multiply and accumulate
         result1_neon = vmlaq_f32(result1_neon, BVec, AVec);
       }
