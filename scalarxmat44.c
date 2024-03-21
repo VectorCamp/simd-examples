@@ -35,16 +35,8 @@ main() {
     }
     clock_gettime(CLOCK_MONOTONIC, &mid);
 
-    /*
-    // SSE version
-    __m128 lamda_vec = _mm_set1_ps(lamda);   // create a vector with 4 copies of lambda
-
-    for (int i = 0; i < 4; i++) {
-        __m128 A_vec = _mm_load_ps(A[i]);       // load 4 floats from A
-        A_vec = _mm_mul_ps(A_vec, lamda_vec);   // multiply by lamda
-        _mm_store_ps(A[i], A_vec);              // store the result back in B
-    }
-    */
+    // using this as a placeholder for the implementations
+    // replace this loop with (sse,avx2,avx512...)
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
             B[i][j] = lamda * B[i][j];

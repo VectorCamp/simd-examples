@@ -43,7 +43,7 @@ main() {
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 4; j += 4) {
                 __m128 B_vec = _mm_load_ps(&B[i][j]);   // load 4 floats from B
-                B_vec = _mm_mul_ps(B_vec, lamda_vec);   // multiply by lamda
+                B_vec = _mm_mul_ps(B_vec, lamda_vec);   // multiply by lamda vector
                 _mm_store_ps(&B[i][j], B_vec);          // store the result back in B
             }
         }
