@@ -36,7 +36,7 @@ int main() {
   gettimeofday(&tv1, NULL);
 
   // Scalar version
-  for(int k=0; k<LOOPS; k++){
+  for (int k = 0; k < LOOPS; k++) {
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 4; j++) {
         A[i][j] = lamda * A[i][j];
@@ -48,9 +48,10 @@ int main() {
   // NEON Version
   float32x4_t lamda_vector = vdupq_n_f32(lamda);
   float32x4_t array_in = vdupq_n_f32(0.0f);
+
   // becase we have a 4x4 array we take each row with 1 vector
   // otherwise we would to use a different mechanism
-  for(int k=0; k<LOOPS; k++){
+  for (int k = 0; k < LOOPS; k++) {
     for (int i = 0; i < 4; i++) {
 
       // load 4 float values from the array B, multiply each value with lamda
@@ -103,6 +104,4 @@ int main() {
   }
   printf("Scalar: %ld sec, usec: %ld\n", diff1.tv_sec, diff1.tv_usec);
   printf("NEON   : %ld sec, usec: %ld\n", diff2.tv_sec, diff2.tv_usec);
-
-
 }
