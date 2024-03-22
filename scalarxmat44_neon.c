@@ -6,7 +6,7 @@
 #include <sys/time.h>
 
 #define N 4
-#define LOOPS 1000
+#define LOOPS 1000000000
 
 void scalarxmat44_c(float *A[], float lamda) {
   for (int i = 0; i < 4; i++) {
