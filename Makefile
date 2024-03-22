@@ -26,8 +26,15 @@ else ifeq ($(ARCH), aarch64)
 	all: $(ALL)
 	average_neon: average_neon.c
 		$(CC) $(CFLAGS) -o average_neon average_neon.c
-endif
+else ifeq ($(ARCH), ppc64le)
+CFLAGS += -mcpu=native
+ALL=average_power
+all: $(ALL)
 
+average_power: average_power.c
+	$(CC) $(CFLAGS) -o average_power average_power.c
+
+endif
 
 .PHONY: clean
 clean:
