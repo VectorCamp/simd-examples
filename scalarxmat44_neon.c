@@ -6,7 +6,7 @@
 #include <sys/time.h>
 
 #define N 4
-#define LOOPS 1000000000
+#define LOOPS 10000000
 
 void scalarxmat44_c(float *A[], float lamda) {
   for (int i = 0; i < 4; i++) {
@@ -16,12 +16,11 @@ void scalarxmat44_c(float *A[], float lamda) {
   }
 }
 
-void scalarxmat44_neon(float32x4_t lamda_vector, float32x4_t array_in,
-                       float *B[]) {
+void scalarxmat44_neon(float32x4_t lamda_vector, float *B[]) {
   for (int i = 0; i < 4; i++) {
     // load 4 float values from the array B, multiply each value with lamda
     // and then store result back to B array
-    array_in = vld1q_f32(&B[i][0]);
+    float32x4_t array_in = vld1q_f32(&B[i][0]);
     array_in = vmulq_f32(array_in, lamda_vector);
     vst1q_f32(&B[i][0], array_in);
   }
@@ -75,12 +74,11 @@ int main() {
 
   // NEON Version
   float32x4_t lamda_vector = vdupq_n_f32(lamda);
-  float32x4_t array_in = vdupq_n_f32(0.0f);
 
   // becase we have a 4x4 array we take each row with 1 vector
   // otherwise we would to use a different mechanism
   for (int k = 0; k < LOOPS; k++) {
-    scalarxmat44_neon(lamda_vector, array_in, B);
+    scalarxmat44_neon(lamda_vector, B);
   }
 
   gettimeofday(&tv3, NULL);
