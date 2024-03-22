@@ -22,6 +22,35 @@ void mat_transpose_inp_4x4_helium_f32(float32_t *matrix) {
   vst4q_f32(matrix, rows);
 }
 
+void matXmat(float C[N][N], float A[N][N], float B[N][N]) {
+  for (int i = 0; i < 4; i++) {
+    for (int j = 0; j < 4; j++) {
+      C[i][j] = 0.0f;
+      for (int k = 0; k < 4; k++) {
+        C[i][j] += A[i][k] * B[k][j];
+      }
+    }
+  }
+}
+void matXmat_neon(float A[N][N], float B[N][N], float D[N][N], float32x4_t row,
+                  float32x4_t col, float32x4_t res, float32_t sum) {
+  for (int i = 0; i < N; i++) {
+    for (int k = 0; k < N; k++) {
+      for (int j = 0; j < N; j += 4) {
+        // load the i-th row from matrix A
+        row = vld1q_f32(&A[i][j]);
+        // load the k-th column from matrix B
+        col = vld1q_f32(&B[k][j]);
+        // calculate result: multiply corresponding elements
+        res = vmulq_f32(row, col);
+      }
+      // store the sum into D[i][k]
+      sum = vaddvq_f32(res);
+      D[i][k] = sum;
+    }
+  }
+}
+
 int main() {
 
   int count = 0;
@@ -55,14 +84,7 @@ int main() {
   // SCALAR version of matrix matrix (A x B)
   gettimeofday(&tv1, NULL);
   for (int loops = 0; loops < LOOPS; loops++) {
-    for (int i = 0; i < 4; i++) {
-      for (int j = 0; j < 4; j++) {
-        C[i][j] = 0.0f;
-        for (int k = 0; k < 4; k++) {
-          C[i][j] += A[i][k] * B[k][j];
-        }
-      }
-    }
+    matXmat(C, A, B);
   }
 
   // print the scalar result
@@ -86,21 +108,7 @@ int main() {
   float32_t sum = 0.0f;
 
   for (int loops = 0; loops < LOOPS; loops++) {
-    for (int i = 0; i < N; i++) {
-      for (int k = 0; k < N; k++) {
-        for (int j = 0; j < N; j += 4) {
-          // load the i-th row from matrix A
-          row = vld1q_f32(&A[i][j]);
-          // load the k-th column from matrix B
-          col = vld1q_f32(&B[k][j]);
-          // calculate result: multiply corresponding elements
-          res = vmulq_f32(row, col);
-        }
-        // store the sum into D[i][k]
-        sum = vaddvq_f32(res);
-        D[i][k] = sum;
-      }
-    }
+    matXmat_neon(A, B, D, row, col, res, sum);
   }
 
   printf("NEON matrix: \n");
