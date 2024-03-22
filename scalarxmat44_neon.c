@@ -6,7 +6,26 @@
 #include <sys/time.h>
 
 #define N 4
-#define LOOPS 1000000000
+#define LOOPS 10
+
+void scalarxmat44(float A[N][N], float lamda) {
+  for (int i = 0; i < 4; i++) {
+    for (int j = 0; j < 4; j++) {
+      A[i][j] = lamda * A[i][j];
+    }
+  }
+}
+
+void scalarxmat44_neon(float32x4_t lamda_vector, float32x4_t array_in,
+                       float B[N][N]) {
+  for (int i = 0; i < 4; i++) {
+    // load 4 float values from the array B, multiply each value with lamda
+    // and then store result back to B array
+    array_in = vld1q_f32(&B[i][0]);
+    array_in = vmulq_f32(array_in, lamda_vector);
+    vst1q_f32(&B[i][0], array_in);
+  }
+}
 
 int main() {
 
@@ -37,11 +56,7 @@ int main() {
 
   // Scalar version
   for (int k = 0; k < LOOPS; k++) {
-    for (int i = 0; i < 4; i++) {
-      for (int j = 0; j < 4; j++) {
-        A[i][j] = lamda * A[i][j];
-      }
-    }
+    scalarxmat44(A, lamda);
   }
   gettimeofday(&tv2, NULL);
 
@@ -52,14 +67,7 @@ int main() {
   // becase we have a 4x4 array we take each row with 1 vector
   // otherwise we would to use a different mechanism
   for (int k = 0; k < LOOPS; k++) {
-    for (int i = 0; i < 4; i++) {
-
-      // load 4 float values from the array B, multiply each value with lamda
-      // and then store result back to B array
-      array_in = vld1q_f32(&B[i][0]);
-      array_in = vmulq_f32(array_in, lamda_vector);
-      vst1q_f32(&B[i][0], array_in);
-    }
+    scalarxmat44_neon(lamda_vector, array_in, B);
   }
 
   gettimeofday(&tv3, NULL);
@@ -97,6 +105,7 @@ int main() {
       }
     }
   }
+
   if (are_equal) {
     printf("Arrays A and B are the same\n");
   } else {
