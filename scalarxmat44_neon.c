@@ -6,9 +6,9 @@
 #include <sys/time.h>
 
 #define N 4
-#define LOOPS 10
+#define LOOPS 1000
 
-void scalarxmat44_c(float A[N][N], float lamda) {
+void scalarxmat44_c(float *A[], float lamda) {
   for (int i = 0; i < 4; i++) {
     for (int j = 0; j < 4; j++) {
       A[i][j] = lamda * A[i][j];
@@ -17,7 +17,7 @@ void scalarxmat44_c(float A[N][N], float lamda) {
 }
 
 void scalarxmat44_neon(float32x4_t lamda_vector, float32x4_t array_in,
-                       float B[N][N]) {
+                       float *B[]) {
   for (int i = 0; i < 4; i++) {
     // load 4 float values from the array B, multiply each value with lamda
     // and then store result back to B array
@@ -35,8 +35,21 @@ int main() {
 
   // static alligned memory
   //(16 byte allignment because of NEON intrinsics)
-  float A[N][N] __attribute__((aligned(16)));
-  float B[N][N] __attribute__((aligned(16)));
+  float *A[N];
+  float *B[N];
+  for (int i = 0; i < N; i++) {
+    if (posix_memalign((void **)&A[i], 16, N * sizeof(float)) != 0) {
+      perror("Memory allocation failed for A");
+      exit(EXIT_FAILURE);
+    }
+    if (posix_memalign((void **)&B[i], 16, N * sizeof(float)) != 0) {
+      perror("Memory allocation failed for B");
+      for (int j = 0; j < i; j++) {
+        free(A[j]);
+      }
+      exit(EXIT_FAILURE);
+    }
+  }
 
   // fill array with numbers
   for (int i = 0; i < 4; i++) {
