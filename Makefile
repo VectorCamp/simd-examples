@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-O3 -Wall
+CFLAGS=-O2 -Wall
 ARCH := $(shell uname -m)
 ifeq ($(ARCH), x86_64)
 ALL= average_avx512\
