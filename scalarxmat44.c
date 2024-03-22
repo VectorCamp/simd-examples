@@ -1,107 +1,96 @@
 #include <immintrin.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/time.h>
+#include <time.h>
+#define N 1000000000   // loops
 
-#define N 4
-
-int
-main() {
-
-    // allocate memory for array
+void
+checkArraysEqual(float A[4][4], float B[4][4], float epsilon) {
     int are_equal = 1;
-    float lamda = 5.0;
-    int count = 0;
-    float(*A)[N] = malloc(sizeof(float[N][N]));
-    if (!A) {
-        fprintf(stderr, "error allocating memory for matrix\n");
-        exit(1);
-    }
-    float(*B)[N] = malloc(sizeof(float[N][N]));
-    if (!B) {
-        fprintf(stderr, "error allocating memory for matrix\n");
-        exit(1);
-    }
-    // fill array with numbers
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            A[i][j] = (float) count++;
-        }
-    }
-    count = 0;
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            B[i][j] = (float) count++;
-        }
-    }
-
-    struct timeval tv1, tv2, tv3, diff1, diff2;
-    gettimeofday(&tv1, NULL);
-
-    // normal scalar version
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            A[i][j] = lamda * A[i][j];
-        }
-    }
-    gettimeofday(&tv2, NULL);
-
-    /*
-    // SSE version
-    __m128 lamda_vec = _mm_set1_ps(lamda);   // create a vector with 4 copies of lambda
-
-    for (int i = 0; i < 4; i++) {
-        __m128 A_vec = _mm_load_ps(A[i]);       // load 4 floats from A
-        A_vec = _mm_mul_ps(A_vec, lamda_vec);   // multiply by lamda
-        _mm_store_ps(A[i], A_vec);              // store the result back in B
-    }
-    */
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            B[i][j] = lamda * B[i][j];
-        }
-    }
-    gettimeofday(&tv3, NULL);
-
-    // Get time difference
-    // https://stackoverflow.com/questions/1444428/time-stamp-in-the-c-programming-language
-    diff1.tv_sec = tv2.tv_sec - tv1.tv_sec;
-    diff1.tv_usec = tv2.tv_usec + (1000000 - tv1.tv_usec);
-    diff2.tv_sec = tv3.tv_sec - tv2.tv_sec;
-    diff2.tv_usec = tv3.tv_usec + (1000000 - tv2.tv_usec);
-
-    while (diff1.tv_usec > 1000000) {
-        diff1.tv_sec++;
-        diff1.tv_usec -= 1000000;
-        printf("updated diff1 tv_sec:%ld tv_usec:%ld\n", diff1.tv_sec, diff1.tv_usec);
-    }
-    while (diff2.tv_usec > 1000000) {
-        diff2.tv_sec++;
-        diff2.tv_usec -= 1000000;
-        printf("updated diff2 tv_sec:%ld tv_usec:%ld\n", diff2.tv_sec, diff2.tv_usec);
-    }
 
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
-            {
-                if (A[i][j] != B[i][j]) {
-                    are_equal = 0;
-                    printf("Arrays A and B differ at index %d\n", i);
-                    break;
-                }
+            if (fabs(A[i][j] - B[i][j]) > epsilon) {
+                are_equal = 0;
+                break;
             }
         }
+        if (!are_equal) {
+            break;
+        }
     }
+
     if (are_equal) {
         printf("Arrays A and B are the same\n");
     } else {
         printf("Arrays A and B are not the same\n");
     }
-    printf("scalar: %ld sec, usec: %ld\n", diff1.tv_sec, diff1.tv_usec);
-    // printf("SSE   : %ld sec, usec: %ld\n", diff2.tv_sec, diff2.tv_usec);
+}
+void
+scalarxmat44_c(float A[4][4], float lambda) {
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            A[i][j] = lambda * A[i][j];
+        }
+    }
+}
+void
+scalarxmat44_sse(float B[4][4], float lambda) {
+    __m128 lambda_vec = _mm_set1_ps(lambda);   // create a 128-bit vector with all elements equal to lambda
 
-    // free the memory
-    free(A);
-    free(B);
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j += 4) {
+            __m128 B_vec = _mm_load_ps(&B[i][j]);
+            B_vec = _mm_mul_ps(B_vec, lambda_vec);
+            _mm_store_ps(&B[i][j], B_vec);
+        }
+    }
+}
+int
+main() {
+    float epsilon = 0.00001f;
+    float lambda = 5.0;
+    float A[4][4] __attribute__((aligned(16)));
+    float B[4][4] __attribute__((aligned(16)));
+    struct timespec start, mid, end;
+    // Use the current time in microseconds to seed the random number generator
+    srand(time(NULL));
+    // fill array with random numbers
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            float random_number = (float) rand() / RAND_MAX * 4;
+            A[i][j] = random_number;
+            B[i][j] = random_number;
+        }
+    }
+
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    // normal scalar version
+    for (int k = 0; k < N; k++) {
+        scalarxmat44_c(A, lambda);
+    }
+    clock_gettime(CLOCK_MONOTONIC, &mid);
+
+    // SSE version
+    for (int k = 0; k < N; k++) {
+        scalarxmat44_sse(B, lambda);
+    }
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    long seconds1 = mid.tv_sec - start.tv_sec;
+    long nanoseconds1 = mid.tv_nsec - start.tv_nsec;
+    if (nanoseconds1 < 0) {
+        seconds1--;
+        nanoseconds1 += 1000000000;
+    }
+    long seconds2 = end.tv_sec - mid.tv_sec;
+    long nanoseconds2 = end.tv_nsec - mid.tv_nsec;
+    if (nanoseconds2 < 0) {
+        seconds2--;
+        nanoseconds2 += 1000000000;
+    }
+    checkArraysEqual(A, B, epsilon);
+    printf("scalar: %ld.%09ld seconds\n", seconds1, nanoseconds1);
+    printf("SSE   : %ld.%09ld seconds\n", seconds2, nanoseconds2);
 }
