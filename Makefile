@@ -16,7 +16,7 @@ average_avx512: average_avx512.c
 	$(CC) -mavx512f $(CFLAGS) average_avx512.c -o average_avx512
 
 scalarxmat44: scalarxmat44.c
-	$(CC) $(CFLAGS) scalarxmat44.c -o scalarxmat44
+	$(CC) $(CFLAGS) -mavx2 -mavx512f scalarxmat44.c -o scalarxmat44
 
 else ifeq ($(ARCH), arm64)
 CFLAGS += -march=native
