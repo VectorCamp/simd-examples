@@ -18,7 +18,7 @@ average_avx512: average_avx512.c
 scalarxmat44: scalarxmat44.c
 	$(CC) $(CFLAGS) -mavx2 -mavx512f scalarxmat44.c -o scalarxmat44
 
-else ifeq ($(ARCH), arm64)
+else ifeq ($(filter $(ARCH),arm64 aarch64),$(ARCH))
 CFLAGS += -march=native
 ALL=average_neon scalarxmat44_neon
 all: $(ALL)
