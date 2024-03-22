@@ -6,7 +6,51 @@
 #include <sys/time.h>
 
 #define N 4
-#define LOOPS 1
+#define LOOPS 100
+
+void matrixXvector(float resultVector1_scalar[N], float B[N][N],
+                   float vectorA[N]) {
+  for (int i = 0; i < N; i++) {
+    resultVector1_scalar[i] = 0.0f;
+    for (int j = 0; j < N; j++) {
+      resultVector1_scalar[i] += B[i][j] * vectorA[j];
+    }
+  }
+}
+void matrixXvector_neon(float32x4_t result1_neon, float32x4_t BVec,
+                        float32x4_t AVec, float B[N][N],
+                        float resultVector1_neon[N]) {
+  for (int i = 0; i < N; i++) {
+    result1_neon = vdupq_n_f32(0.0f);
+    for (int j = 0; j < N; j += 4) {
+      // Load 4 elements of B[i][j] into BVec
+      BVec = vld1q_f32(&B[i][j]);
+      // Multiply and accumulate
+      result1_neon = vmlaq_f32(result1_neon, BVec, AVec);
+    }
+    // Sum the 4 elements in sumVec and store the result
+    resultVector1_neon[i] = vaddvq_f32(result1_neon);
+  }
+}
+void vectorXmatrix(float resultVector2_scalar[N], float B[N][N],
+                   float vectorA[N]) {
+  for (int i = 0; i < N; i++) {
+    resultVector2_scalar[i] = 0.0f;
+    for (int j = 0; j < N; j++) {
+      resultVector2_scalar[i] += vectorA[j] * B[j][i];
+    }
+  }
+}
+void vectorXmatrix_neon(float B[N][N], float vectorA[N],
+                        float32x4_t result2_neon, float resultVector2_neon[N],
+                        float32x4_t B_row, float32x4_t A_value) {
+  for (int i = 0; i < N; i++) {
+    B_row = vld1q_f32(&B[i][0]);
+    A_value = vdupq_n_f32(vectorA[i]);
+    result2_neon = vmlaq_f32(result2_neon, B_row, A_value);
+  }
+  vst1q_f32(resultVector2_neon, result2_neon);
+}
 
 int main() {
 
@@ -51,14 +95,9 @@ int main() {
 
   gettimeofday(&tv1, NULL);
 
+  // SCALAR VERSION for Matrix x Vector
   for (int j = 0; j < LOOPS; j++) {
-    // SCALAR VERSION for Matrix x Vector
-    for (int i = 0; i < N; i++) {
-      resultVector1_scalar[i] = 0.0f;
-      for (int j = 0; j < N; j++) {
-        resultVector1_scalar[i] += B[i][j] * vectorA[j];
-      }
-    }
+    matrixXvector(resultVector1_scalar, B, vectorA);
   }
   gettimeofday(&tv2, NULL);
 
@@ -68,46 +107,24 @@ int main() {
   float32x4_t AVec = vld1q_f32(vectorA);
 
   for (int j = 0; j < LOOPS; j++) {
-    for (int i = 0; i < N; i++) {
-      result1_neon = vdupq_n_f32(0.0f);
-      for (int j = 0; j < N; j += 4) {
-        // Load 4 elements of B[i][j] into BVec
-        BVec = vld1q_f32(&B[i][j]);
-        // Multiply and accumulate
-        result1_neon = vmlaq_f32(result1_neon, BVec, AVec);
-      }
-      // Sum the 4 elements in sumVec and store the result
-      resultVector1_neon[i] = vaddvq_f32(result1_neon);
-    }
+    matrixXvector_neon(result1_neon, BVec, AVec, B, resultVector1_neon);
   }
   gettimeofday(&tv3, NULL);
 
   // SCALAR VERSION for Vector x Matrix
   for (int k = 0; k < LOOPS; k++) {
-    for (int i = 0; i < N; i++) {
-      resultVector2_scalar[i] = 0.0f;
-      for (int j = 0; j < N; j++) {
-        resultVector2_scalar[i] += vectorA[j] * B[j][i];
-      }
-    }
+    vectorXmatrix(resultVector2_scalar, B, vectorA);
   }
   gettimeofday(&tv4, NULL);
 
   // NEON VERSION for Vector x Matrix
   float32x4_t result2_neon = vdupq_n_f32(0.0f);
-
+  float32x4_t B_row = vdupq_n_f32(0.0f);
+  float32x4_t A_value = vdupq_n_f32(0.0f);
   for (int k = 0; k < LOOPS; k++) {
     result2_neon = vdupq_n_f32(0.0f);
-
-    for (int i = 0; i < N; i++) {
-      float32x4_t B_row = vld1q_f32(&B[i][0]);
-      float32x4_t A_value = vdupq_n_f32(vectorA[i]);
-      result2_neon = vmlaq_f32(result2_neon, B_row, A_value);
-    }
-
-    // now the result2_neon vector contains the result and I need to save it
-    // into resultVector2_neon float array
-    vst1q_f32(resultVector2_neon, result2_neon);
+    vectorXmatrix_neon(B, vectorA, result2_neon, resultVector2_neon, B_row,
+                       A_value);
   }
   gettimeofday(&tv5, NULL);
 
