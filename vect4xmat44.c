@@ -25,7 +25,7 @@ checkVectorsEqual(float result[4], float implResult[4], float epsilon) {
     }
 }
 void
-vect4xmat44(float B[4][4], float vectorA[4], float result[4]) {
+vect4xmat44_c(float B[4][4], float vectorA[4], float result[4]) {
     for (int i = 0; i < 4; i++) {
         result[i] = 0.0f;
         for (int j = 0; j < 4; j++) {
@@ -34,7 +34,7 @@ vect4xmat44(float B[4][4], float vectorA[4], float result[4]) {
     }
 }
 void
-vect4xmat44SSE(float B[4][4], float vectorA[4], float implResult[4]) {
+vect4xmat44_sse(float B[4][4], float vectorA[4], float implResult[4]) {
     __m128 result_sse[4];
 
     for (int i = 0; i < 4; i++) {
@@ -76,13 +76,13 @@ main() {
 
     // normal scalar version
     for (int k = 0; k < N; k++) {
-        vect4xmat44(B, vectorA, result);
+        vect4xmat44_c(B, vectorA, result);
     }
     clock_gettime(CLOCK_MONOTONIC, &mid);
 
     // SSE version
     for (int k = 0; k < N; k++) {
-        vect4xmat44SSE(B, vectorA, implResult);
+        vect4xmat44_sse(B, vectorA, implResult);
     }
     clock_gettime(CLOCK_MONOTONIC, &end);
 
