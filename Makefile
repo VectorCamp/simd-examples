@@ -42,8 +42,8 @@ all: $(ALL)
 
 average_power: average_power.c
 	$(CC) $(CFLAGS) -o average_power average_power.c
-
 endif
+	
 
 .PHONY: clean
 clean:
