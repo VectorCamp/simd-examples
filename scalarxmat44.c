@@ -29,7 +29,7 @@ checkArraysEqual(float A[4][4], float B[4][4], float epsilon) {
     }
 }
 void
-scalarxmat44(float A[4][4], float lambda) {
+scalarxmat44_c(float A[4][4], float lambda) {
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
             A[i][j] = lambda * A[i][j];
@@ -37,7 +37,7 @@ scalarxmat44(float A[4][4], float lambda) {
     }
 }
 void
-scalarxmat44SSE(float B[4][4], float lambda) {
+scalarxmat44_sse(float B[4][4], float lambda) {
     __m128 lambda_vec = _mm_set1_ps(lambda);   // create a 128-bit vector with all elements equal to lambda
 
     for (int i = 0; i < 4; i++) {
@@ -69,13 +69,13 @@ main() {
     clock_gettime(CLOCK_MONOTONIC, &start);
     // normal scalar version
     for (int k = 0; k < N; k++) {
-        scalarxmat44(A, lambda);
+        scalarxmat44_c(A, lambda);
     }
     clock_gettime(CLOCK_MONOTONIC, &mid);
 
     // SSE version
     for (int k = 0; k < N; k++) {
-        scalarxmat44SSE(B, lambda);
+        scalarxmat44_sse(B, lambda);
     }
     clock_gettime(CLOCK_MONOTONIC, &end);
     long seconds1 = mid.tv_sec - start.tv_sec;
