@@ -24,13 +24,16 @@ scalarxmat44: scalarxmat44.c
 mat44xmat44: mat44xmat44.c
 	$(CC) $(CFLAGS) -mavx2 -mavx512f mat44xmat44.c -o mat44xmat44
 
-else ifeq ($(ARCH), arm64)
+else ifeq ($(filter $(ARCH),arm64 aarch64),$(ARCH))
 CFLAGS += -march=native
-ALL=average_neon
+ALL=average_neon scalarxmat44
 all: $(ALL)
 
 average_neon: average_neon.c
 	$(CC) $(CFLAGS) -o average_neon average_neon.c
+
+scalarxmat44: scalarxmat44_neon.c
+	$(CC) $(CFLAGS) -o scalarxmat44 scalarxmat44_neon.c
 
 else ifeq ($(ARCH), ppc64le)
 CFLAGS += -mcpu=native
