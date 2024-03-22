@@ -5,7 +5,7 @@
 #include <string.h>
 #include <sys/time.h>
 #include <time.h>
-#define N 1000000000
+#define N 100000000
 
 void
 checkArraysEqual(float result[4][4], float implResult[4][4], float epsilon) {
