@@ -8,7 +8,7 @@
 #define N 4
 #define LOOPS 10
 
-void scalarxmat44(float A[N][N], float lamda) {
+void scalarxmat44_c(float A[N][N], float lamda) {
   for (int i = 0; i < 4; i++) {
     for (int j = 0; j < 4; j++) {
       A[i][j] = lamda * A[i][j];
@@ -56,7 +56,7 @@ int main() {
 
   // Scalar version
   for (int k = 0; k < LOOPS; k++) {
-    scalarxmat44(A, lamda);
+    scalarxmat44_c(A, lamda);
   }
   gettimeofday(&tv2, NULL);
 
