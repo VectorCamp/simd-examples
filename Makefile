@@ -2,7 +2,11 @@ CC=gcc
 CFLAGS=-O3 -Wall
 ARCH := $(shell uname -m)
 ifeq ($(ARCH), x86_64)
-ALL= average_avx512 average_avx2 average_sse scalarxmat44 mat44xmat44
+ALL= average_avx512 \
+		average_avx2 \
+		average_sse	 \	
+		scalarxmat44 \
+		mat44xmat44
 all: $(ALL)
 average_sse: average_sse.c
 	$(CC) $(CFLAGS) average_sse.c -o average_sse
