@@ -30,7 +30,7 @@ checkArraysEqual(float result[4][4], float implResult[4][4], float epsilon) {
     }
 }
 void
-mat44xmat44(float A[4][4], float B[4][4], float result[4][4]) {
+mat44xmat44_c(float A[4][4], float B[4][4], float result[4][4]) {
     for (int i = 0; i < 4; i++) {
         for (int j = 0; j < 4; j++) {
             result[i][j] = 0.0f;
@@ -41,7 +41,7 @@ mat44xmat44(float A[4][4], float B[4][4], float result[4][4]) {
     }
 }
 void
-mat44xmat44SSE(float (*A)[4], float (*B)[4], float (*implResult)[4]) {
+mat44xmat44_sse(float (*A)[4], float (*B)[4], float (*implResult)[4]) {
     float BT[4][4];
     // Transpose B
     // Load the first four elements of each row of B into 128-bit vectors
@@ -95,12 +95,12 @@ main() {
     clock_gettime(CLOCK_MONOTONIC, &start);
     // normal scalar version
     for (int l = 0; l < N; l++) {
-        mat44xmat44(A, B, result);
+        mat44xmat44_c(A, B, result);
     }
     clock_gettime(CLOCK_MONOTONIC, &mid);
     // SSE version
     for (int l = 0; l < N; l++) {
-        mat44xmat44SSE(A, B, implResult);
+        mat44xmat44_sse(A, B, implResult);
     }
     clock_gettime(CLOCK_MONOTONIC, &end);
 

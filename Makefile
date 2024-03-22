@@ -4,10 +4,10 @@ ARCH := $(shell uname -m)
 
 ifeq ($(ARCH), x86_64)
 ALL= average_avx512\
-        average_avx2\
-        average_sse\
-        scalarxmat44\
-        mat44xmat44\
+		average_avx2\
+		average_sse\
+		scalarxmat44\
+		mat44xmat44\
         vect4xmat44
 all: $(ALL)
 
