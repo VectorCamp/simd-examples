@@ -6,10 +6,9 @@
 #include <sys/time.h>
 
 #define N 4
-#define LOOPS 100
+#define LOOPS 1000000000
 
-void matrixXvector(float resultVector1_scalar[N], float B[N][N],
-                   float vectorA[N]) {
+void matrixXvector(float *resultVector1_scalar, float *B[], float *vectorA) {
   for (int i = 0; i < N; i++) {
     resultVector1_scalar[i] = 0.0f;
     for (int j = 0; j < N; j++) {
@@ -17,9 +16,11 @@ void matrixXvector(float resultVector1_scalar[N], float B[N][N],
     }
   }
 }
-void matrixXvector_neon(float32x4_t result1_neon, float32x4_t BVec,
-                        float32x4_t AVec, float B[N][N],
-                        float resultVector1_neon[N]) {
+void matrixXvector_neon(float32x4_t result1_neon, float32x4_t AVec, float *B[],
+                        float *resultVector1_neon) {
+
+  float32x4_t BVec = vdupq_n_f32(0.0f);
+
   for (int i = 0; i < N; i++) {
     result1_neon = vdupq_n_f32(0.0f);
     for (int j = 0; j < N; j += 4) {
@@ -32,8 +33,7 @@ void matrixXvector_neon(float32x4_t result1_neon, float32x4_t BVec,
     resultVector1_neon[i] = vaddvq_f32(result1_neon);
   }
 }
-void vectorXmatrix(float resultVector2_scalar[N], float B[N][N],
-                   float vectorA[N]) {
+void vectorXmatrix(float *resultVector2_scalar, float *B[], float *vectorA) {
   for (int i = 0; i < N; i++) {
     resultVector2_scalar[i] = 0.0f;
     for (int j = 0; j < N; j++) {
@@ -41,9 +41,10 @@ void vectorXmatrix(float resultVector2_scalar[N], float B[N][N],
     }
   }
 }
-void vectorXmatrix_neon(float B[N][N], float vectorA[N],
-                        float32x4_t result2_neon, float resultVector2_neon[N],
-                        float32x4_t B_row, float32x4_t A_value) {
+void vectorXmatrix_neon(float *B[], float *vectorA, float32x4_t result2_neon,
+                        float *resultVector2_neon) {
+  float32x4_t B_row = vdupq_n_f32(0.0f);
+  float32x4_t A_value = vdupq_n_f32(0.0f);
   for (int i = 0; i < N; i++) {
     B_row = vld1q_f32(&B[i][0]);
     A_value = vdupq_n_f32(vectorA[i]);
@@ -60,26 +61,53 @@ int main() {
   struct timeval tv1, tv2, tv3, tv4, tv5, diff1, diff2, diff3, diff4;
 
   // Declare and allocate memory for vectorA
-  float vectorA[N] __attribute__((aligned(16)));
+  float *vectorA = NULL;
+  if (posix_memalign((void **)&vectorA, 16, N * sizeof(float)) != 0) {
+    perror("posix_memalign failed");
+    exit(EXIT_FAILURE);
+  }
 
   // Declare and allocate memory for matrix B
-  float B[N][N] __attribute__((aligned(16)));
-
+  float *B[N];
+  for (int i = 0; i < N; i++) {
+    if (posix_memalign((void **)&B[i], 16, N * sizeof(float)) != 0) {
+      perror("Memory allocation failed for B");
+      exit(EXIT_FAILURE);
+    }
+  }
   // Declare and allocate memory for resultVector1_neon (Vector x Matrix)
   // this will store the result from NEON 1x4
-  float resultVector1_neon[N] __attribute__((aligned(16)));
+  float *resultVector1_neon = NULL;
+  if (posix_memalign((void **)&resultVector1_neon, 16, N * sizeof(float)) !=
+      0) {
+    perror("posix_memalign failed");
+    exit(EXIT_FAILURE);
+  }
 
   // Declare and allocate memory for resultVector2_neon (Matrix x Vector)
   // this will store the result from NEON 4x1
-  float resultVector2_neon[N] __attribute__((aligned(16)));
-
+  float *resultVector2_neon = NULL;
+  if (posix_memalign((void **)&resultVector2_neon, 16, N * sizeof(float)) !=
+      0) {
+    perror("posix_memalign failed");
+    exit(EXIT_FAILURE);
+  }
   // Declare and allocate memory for resultVector1_scalar (Vector x Matrix)
   // scalar version
-  float resultVector1_scalar[N] __attribute__((aligned(16)));
-
+  float *resultVector1_scalar = NULL;
+  if (posix_memalign((void **)&resultVector1_scalar, 16, N * sizeof(float)) !=
+      0) {
+    perror("posix_memalign failed");
+    exit(EXIT_FAILURE);
+  }
   // Declare and allocate memory for resultVector2_scalar (Matrix x Vector)
   // scalar version
-  float resultVector2_scalar[N] __attribute__((aligned(16)));
+  float *resultVector2_scalar = NULL;
+  if (posix_memalign((void **)&resultVector2_scalar, 16, N * sizeof(float)) !=
+      0) {
+    perror("posix_memalign failed");
+    exit(EXIT_FAILURE);
+  }
 
   // fill vector
   for (int i = 0; i < N; i++) {
@@ -102,12 +130,11 @@ int main() {
   gettimeofday(&tv2, NULL);
 
   // NEON VERSION for Matrix x Vector
-  float32x4_t result1_neon;
-  float32x4_t BVec = vdupq_n_f32(0.0f);
+  float32x4_t result1_neon = vdupq_n_f32(0.0f); 
   float32x4_t AVec = vld1q_f32(vectorA);
 
   for (int j = 0; j < LOOPS; j++) {
-    matrixXvector_neon(result1_neon, BVec, AVec, B, resultVector1_neon);
+    matrixXvector_neon(result1_neon, AVec, B, resultVector1_neon);
   }
   gettimeofday(&tv3, NULL);
 
@@ -119,12 +146,9 @@ int main() {
 
   // NEON VERSION for Vector x Matrix
   float32x4_t result2_neon = vdupq_n_f32(0.0f);
-  float32x4_t B_row = vdupq_n_f32(0.0f);
-  float32x4_t A_value = vdupq_n_f32(0.0f);
   for (int k = 0; k < LOOPS; k++) {
     result2_neon = vdupq_n_f32(0.0f);
-    vectorXmatrix_neon(B, vectorA, result2_neon, resultVector2_neon, B_row,
-                       A_value);
+    vectorXmatrix_neon(B, vectorA, result2_neon, resultVector2_neon);
   }
   gettimeofday(&tv5, NULL);
 
