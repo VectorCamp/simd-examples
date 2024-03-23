@@ -20,14 +20,14 @@ scalarxmat44: scalarxmat44.c
 
 else ifeq ($(ARCH), arm64)
 CFLAGS += -march=native
-ALL=average_neon matxmat44_neon
+ALL=average_neon matxmat44
 all: $(ALL)
 
 average_neon: average_neon.c
 	$(CC) $(CFLAGS) -o average_neon average_neon.c
 
-matxmat44_neon: matxmat44_neon.c
-	$(CC) $(CFLAGS) -o matxmat44_neon matxmat44_neon.c
+matxmat44: matxmat44_neon.c
+	$(CC) $(CFLAGS) -o matxmat44 matxmat44_neon.c
 
 else ifeq ($(ARCH), ppc64le)
 CFLAGS += -mcpu=native

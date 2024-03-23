@@ -6,7 +6,7 @@
 #include <sys/time.h>
 
 #define N 4
-#define LOOPS 100000000
+#define LOOPS 10000000000
 
 // use this function to transpose matrix B
 // ref:
@@ -22,7 +22,7 @@ void mat_transpose_inp_4x4_helium_f32(float32_t *matrix) {
   vst4q_f32(matrix, rows);
 }
 
-void matXmat(float C[N][N], float A[N][N], float B[N][N]) {
+void matXmat_c(float *C[], float *A[], float B[N][N]) {
   for (int i = 0; i < 4; i++) {
     for (int j = 0; j < 4; j++) {
       C[i][j] = 0.0f;
@@ -32,8 +32,13 @@ void matXmat(float C[N][N], float A[N][N], float B[N][N]) {
     }
   }
 }
-void matXmat_neon(float A[N][N], float B[N][N], float D[N][N], float32x4_t row,
-                  float32x4_t col, float32x4_t res, float32_t sum) {
+void matXmat_neon(float *A[], float B[N][N], float *D[]) {
+
+  float32x4_t row = vdupq_n_f32(0.0f);
+  float32x4_t col = vdupq_n_f32(0.0f);
+  float32x4_t res = vdupq_n_f32(0.0f);
+  float32_t sum = 0.0f;
+
   for (int i = 0; i < N; i++) {
     for (int k = 0; k < N; k++) {
       for (int j = 0; j < N; j += 4) {
@@ -57,15 +62,43 @@ int main() {
   struct timeval tv1, tv2, tv3, diff1, diff2;
 
   // Declare and allocate memory for matrix A
-  float A[N][N] __attribute__((aligned(16)));
+  float *A[N];
+  for (int i = 0; i < N; i++) {
+    if (posix_memalign((void **)&A[i], 16, N * sizeof(float)) != 0) {
+      perror("Memory allocation failed for A");
+      exit(EXIT_FAILURE);
+    }
+  }
+
   // Declare and allocate memory for matrix B
   float B[N][N] __attribute__((aligned(16)));
-
+  
   // Declare and allocate memory for matrix C that will hold the scalar result
-  float C[N][N] __attribute__((aligned(16)));
-
+  //float C[N][N] __attribute__((aligned(16)));
+  float *C[N];
+  for (int i = 0; i < N; i++) {
+    if (posix_memalign((void **)&C[i], 16, N * sizeof(float)) != 0) {
+      perror("Memory allocation failed for C");
+      exit(EXIT_FAILURE);
+      for (int j = 0; j < i; j++) {
+        free(A[j]);
+      }
+    }
+  }
   // Declare and allocate memory for matrix D that will hold the scalar result
-  float D[N][N] __attribute__((aligned(16)));
+  //float D[N][N] __attribute__((aligned(16)));
+  float *D[N];
+  for (int i = 0; i < N; i++) {
+    if (posix_memalign((void **)&D[i], 16, N * sizeof(float)) != 0) {
+      perror("Memory allocation failed for D");
+      exit(EXIT_FAILURE);
+
+      for (int j = 0; j < i; j++) {
+        free(A[j]);
+        free(C[j]);
+      }
+    }
+  }
 
   // fill matrix A
   for (int i = 0; i < N; i++) {
@@ -84,7 +117,7 @@ int main() {
   // SCALAR version of matrix matrix (A x B)
   gettimeofday(&tv1, NULL);
   for (int loops = 0; loops < LOOPS; loops++) {
-    matXmat(C, A, B);
+    matXmat_c(C, A, B);
   }
 
   // print the scalar result
@@ -102,13 +135,8 @@ int main() {
   // transpose matrix B
   mat_transpose_inp_4x4_helium_f32((float32_t *)B);
 
-  float32x4_t row = vdupq_n_f32(0.0f);
-  float32x4_t col = vdupq_n_f32(0.0f);
-  float32x4_t res = vdupq_n_f32(0.0f);
-  float32_t sum = 0.0f;
-
   for (int loops = 0; loops < LOOPS; loops++) {
-    matXmat_neon(A, B, D, row, col, res, sum);
+    matXmat_neon(A, B, D);
   }
 
   printf("NEON matrix: \n");
@@ -129,4 +157,11 @@ int main() {
          diff1.tv_usec);
   printf("NEON Matrix x Matrix: %ld sec, usec: %d\n", diff2.tv_sec,
          diff2.tv_usec);
+
+
+  for (int j = 0; j < N; j++) {
+    free(A[j]);
+    free(C[j]);
+    free(D[j]);
+  }
 }

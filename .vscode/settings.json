@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "stdint.h": "c",
+        "__locale": "c",
+        "chrono": "c",
+        "functional": "c"
+    }
+}
