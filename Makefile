@@ -1,9 +1,13 @@
 CC=gcc
-CFLAGS=-O3 -Wall
+CFLAGS=-O2 -Wall
 ARCH := $(shell uname -m)
 
 ifeq ($(ARCH), x86_64)
-ALL= average_avx512 average_avx2 average_sse scalarxmat44
+ALL= average_avx512\
+        average_avx2\
+        average_sse\
+        scalarxmat44\
+        mat44xmat44
 all: $(ALL)
 
 average_sse: average_sse.c
@@ -16,15 +20,21 @@ average_avx512: average_avx512.c
 	$(CC) -mavx512f $(CFLAGS) average_avx512.c -o average_avx512
 
 scalarxmat44: scalarxmat44.c
-	$(CC) $(CFLAGS) scalarxmat44.c -o scalarxmat44
+	$(CC) $(CFLAGS) -mavx2 -mavx512f scalarxmat44.c -o scalarxmat44
+  
+mat44xmat44: mat44xmat44.c
+	$(CC) $(CFLAGS) -mavx2 -mavx512f mat44xmat44.c -o mat44xmat44
 
-else ifeq ($(ARCH), arm64)
+else ifeq ($(filter $(ARCH),arm64 aarch64),$(ARCH))
 CFLAGS += -march=native
-ALL=average_neon matxmat44
+ALL=average_neon scalarxmat44 matxmat44
 all: $(ALL)
 
 average_neon: average_neon.c
 	$(CC) $(CFLAGS) -o average_neon average_neon.c
+
+scalarxmat44: scalarxmat44_neon.c
+	$(CC) $(CFLAGS) -o scalarxmat44 scalarxmat44_neon.c
 
 matxmat44: matxmat44_neon.c
 	$(CC) $(CFLAGS) -o matxmat44 matxmat44_neon.c
