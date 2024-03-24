@@ -55,12 +55,19 @@ void matXmat_neon(float *A[], float B[N][N], float *D[]) {
   }
 }
 
-int main(int argc, char** argv) {
-  int LOOPS = 100;
+int main(int argc, char **argv) {
+  long int LOOPS = 100000000;
 
-  if (argc == 2)
-    LOOPS = atoi(argv[1]);
+  if (argc == 2) {
+    char *endptr;
+    LOOPS = strtol(argv[1], &endptr, 10);
 
+    // check for conversion errors
+    if (*endptr != '\0' || argv[1][0] == '0') {
+      fprintf(stderr, "Error: Invalid input\n");
+      return EXIT_FAILURE;
+    }
+  }
   int count = 0;
   struct timeval tv1, tv2, tv3, diff1, diff2;
 
@@ -75,9 +82,9 @@ int main(int argc, char** argv) {
 
   // Declare and allocate memory for matrix B
   float B[N][N] __attribute__((aligned(16)));
-  
+
   // Declare and allocate memory for matrix C that will hold the scalar result
-  //float C[N][N] __attribute__((aligned(16)));
+  // float C[N][N] __attribute__((aligned(16)));
   float *C[N];
   for (int i = 0; i < N; i++) {
     if (posix_memalign((void **)&C[i], 16, N * sizeof(float)) != 0) {
@@ -89,7 +96,7 @@ int main(int argc, char** argv) {
     }
   }
   // Declare and allocate memory for matrix D that will hold the scalar result
-  //float D[N][N] __attribute__((aligned(16)));
+  // float D[N][N] __attribute__((aligned(16)));
   float *D[N];
   for (int i = 0; i < N; i++) {
     if (posix_memalign((void **)&D[i], 16, N * sizeof(float)) != 0) {
@@ -160,7 +167,6 @@ int main(int argc, char** argv) {
          diff1.tv_usec);
   printf("NEON Matrix x Matrix: %ld sec, usec: %d\n", diff2.tv_sec,
          diff2.tv_usec);
-
 
   for (int j = 0; j < N; j++) {
     free(A[j]);
