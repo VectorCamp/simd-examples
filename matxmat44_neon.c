@@ -6,7 +6,6 @@
 #include <sys/time.h>
 
 #define N 4
-#define LOOPS 10000000000
 
 // use this function to transpose matrix B
 // ref:
@@ -56,7 +55,11 @@ void matXmat_neon(float *A[], float B[N][N], float *D[]) {
   }
 }
 
-int main() {
+int main(int argc, char** argv) {
+  int LOOPS = 100;
+
+  if (argc == 2)
+    LOOPS = atoi(argv[1]);
 
   int count = 0;
   struct timeval tv1, tv2, tv3, diff1, diff2;
