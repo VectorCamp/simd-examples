@@ -11,22 +11,16 @@
 // into d
 // REF:
 // https://code.videolan.org/videolan/x264/-/blob/master/common/dct.c?ref_type=heads
-static void dct4x4dc(int d[16]) {
+static void dct4x4dc_c(int d[16]) {
   // hold the intermediate results
   int tmp[16];
 
   // iterate over each row of the 4x4 block (phase 1)
   for (int i = 0; i < 4; i++) {
-    int s01 = d[i * 4 + 0] +
-              d[i * 4 + 1]; // sum of the 1st and 2nd elements in the row
-    int d01 =
-        d[i * 4 + 0] -
-        d[i * 4 + 1]; // diff between the 1st and the 2nd elements in the row
-    int s23 = d[i * 4 + 2] +
-              d[i * 4 + 3]; // sum of the 3d and 4th elements in the row
-    int d23 =
-        d[i * 4 + 2] -
-        d[i * 4 + 3]; // diff between the 3d and the 4th elements in the row
+    int s01 = d[i * 4 + 0] + d[i * 4 + 1]; // sum of the 1st and 2nd elements in the row
+    int d01 = d[i * 4 + 0] - d[i * 4 + 1]; // diff between the 1st and the 2nd elements in the row
+    int s23 = d[i * 4 + 2] + d[i * 4 + 3]; // sum of the 3d and 4th elements in the row
+    int d23 = d[i * 4 + 2] - d[i * 4 + 3]; // diff between the 3d and the 4th elements in the row
 
     tmp[0 * 4 + i] = s01 + s23; // 1st element of the row
     tmp[1 * 4 + i] = s01 - s23; // 2nd element of the row
@@ -61,46 +55,46 @@ static void dct4x4dc_neon(int *d) {
     // Load the 4 elements of the current row into NEON registers
     int32x4_t row = vld1q_s32(&d[i * 4]);
 
-    // Compute sum of adjacent pairs (s01, s23)
-    int32x2_t sum_halves = vpadd_s32(vget_low_s32(row), vget_high_s32(row));
+    //s01+s23 = d1+d2+d3+d4
     tmp[0 * 4 + i] = vaddvq_s32(row);
-    tmp[1 * 4 + i] =
-        vget_lane_s32(sum_halves, 0) - vget_lane_s32(sum_halves, 1);
 
-    // Compute differences between adjacent elements
-    int32x2_t d01 = vsub_s32(vget_low_s32(row),
-                             vext_s32(vget_low_s32(row), vget_low_s32(row), 1));
-    int32x2_t d23 =
-        vsub_s32(vget_high_s32(row),
-                 vext_s32(vget_high_s32(row), vget_high_s32(row), 1));
+    //first element is s01, second element is s23 and then I perform s01-s23
+    int32x2_t sum_halves = vpadd_s32(vget_low_s32(row), vget_high_s32(row));
+    tmp[1 * 4 + i] = vget_lane_s32(sum_halves, 0) - vget_lane_s32(sum_halves, 1);
+
+    //Extracts the low half of the elements from the row, which is [d1,d2]
+    //extends the low half of the row, shifting the elements by 1 position to the right, so it becomes [d2, 0]
+    //Subtracts the extended low half [d2, 0] from the original low half [d1, d2], element-wise
+    //d01 = [d1 - d2, d2 - 0] = [d1 - d2, d2]
+    //same for d23
+    
+    int32x2_t d01 = vsub_s32(vget_low_s32(row), vext_s32(vget_low_s32(row), vget_low_s32(row), 1));
+    int32x2_t d23 = vsub_s32(vget_high_s32(row),vext_s32(vget_high_s32(row), vget_high_s32(row), 1));
     tmp[2 * 4 + i] = vget_lane_s32(d01, 0) - vget_lane_s32(d23, 0);
     tmp[3 * 4 + i] = vget_lane_s32(d01, 0) + vget_lane_s32(d23, 0);
   }
 
-  // iterates over each row of the 4x4 block (phase 2)
+  // phase 2
   for (int i = 0; i < 4; i++) {
-    int32x4_t tmp_row = vld1q_s32(&d[i * 4]);
+
+    //follow the same logic as phase 1
+    int32x4_t tmp_row = vld1q_s32(&tmp[i * 4]);
+    int32x4_t d_vector = vdupq_n_s32(0);
+    int32x4_t one_vector = vdupq_n_s32(1);
 
     // contains s01, s23
-    int32x2_t sum_halves =
-        vpadd_s32(vget_low_s32(tmp_row), vget_high_s32(tmp_row));
-    // contains d01, d23
-    int32x2_t sub_halves =
-        vsub_s32(vget_low_s32(tmp_row), vget_high_s32(tmp_row));
+    int32x2_t sum_halves = vpadd_s32(vget_low_s32(tmp_row), vget_high_s32(tmp_row));
+    d_vector = vsetq_lane_s32(vaddvq_s32(tmp_row), d_vector, 0);                                           
+    d_vector = vsetq_lane_s32(vget_lane_s32(sum_halves, 0) - vget_lane_s32(sum_halves, 1), d_vector, 1);
+    
+    int32x2_t d01 = vsub_s32(vget_low_s32(tmp_row), vext_s32(vget_low_s32(tmp_row), vget_low_s32(tmp_row), 1));
+    int32x2_t d23 = vsub_s32(vget_high_s32(tmp_row),vext_s32(vget_high_s32(tmp_row), vget_high_s32(tmp_row), 1));
+    d_vector = vsetq_lane_s32(vget_lane_s32(d01, 0) - vget_lane_s32(d23, 0), d_vector, 2);
+    d_vector = vsetq_lane_s32(vget_lane_s32(d01, 0) + vget_lane_s32(d23, 0), d_vector, 3);
 
-    /*
-    int s01 = tmp[i*4+0] + tmp[i*4+1];  //tmp[0]+tmp[1]
-    int d01 = tmp[i*4+0] - tmp[i*4+1];  //tmp[0]-tmp[1]
-    int s23 = tmp[i*4+2] + tmp[i*4+3];  //tmp[2]+tmp[3]
-    int d23 = tmp[i*4+2] - tmp[i*4+3];  //tmp[2]-tmp[3]
-    */
-
-    // The DCT coefficients are scaled by adding 1 and then right-shifting
-    // by 1 (equivalent to integer division by 2) for rounding.
-    d[i * 4 + 0] = (s01 + s23 + 1) >> 1;
-    d[i * 4 + 1] = (s01 - s23 + 1) >> 1;
-    d[i * 4 + 2] = (d01 - d23 + 1) >> 1;
-    d[i * 4 + 3] = (d01 + d23 + 1) >> 1;
+    //add 1 to each element and devide by 2 with the use of shifting right
+    d_vector=vshrq_n_s32(vaddq_s32(d_vector, one_vector),1);
+    vst1q_s32(&d[i * 4], d_vector);
   }
 }
 
@@ -143,7 +137,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < 16; i++) {
       d[i] = random_value[i];
     }
-    dct4x4dc(d);
+    dct4x4dc_c(d);
   }
   gettimeofday(&tv2, NULL);
 
