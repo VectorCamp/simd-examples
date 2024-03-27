@@ -26,22 +26,25 @@ static void dct4x4dc_c(int d[16]) {
     tmp[1 * 4 + i] = s01 - s23; // 2nd element of the row
     tmp[2 * 4 + i] = d01 - d23; // 3d element of the row
     tmp[3 * 4 + i] = d01 + d23; // 4th element of the row
+    //printf("tmp[0]: %d, tmp[1]: %d, tmp[2]: %d, tmp[3]: %d\n", tmp[0 * 4 + i], tmp[1 * 4 + i], tmp[2 * 4 + i], tmp[3 * 4 + i]);
+
   }
 
   // iterates over each row of the 4x4 block (phase 2)
   for (int i = 0; i < 4; i++) {
-
+    
     int s01 = tmp[i * 4 + 0] + tmp[i * 4 + 1];
     int d01 = tmp[i * 4 + 0] - tmp[i * 4 + 1];
     int s23 = tmp[i * 4 + 2] + tmp[i * 4 + 3];
     int d23 = tmp[i * 4 + 2] - tmp[i * 4 + 3];
-
+    //printf("AFTER: s01: %d, s23: %d, d01: %d, d23: %d\n", s01, s23, d01, d23);
     // The DCT coefficients are scaled by adding 1 and then right-shifting
     // by 1 (equivalent to integer division by 2) for rounding.
     d[i * 4 + 0] = (s01 + s23 + 1) >> 1;
     d[i * 4 + 1] = (s01 - s23 + 1) >> 1;
     d[i * 4 + 2] = (d01 - d23 + 1) >> 1;
     d[i * 4 + 3] = (d01 + d23 + 1) >> 1;
+    
   }
 }
 
@@ -52,7 +55,7 @@ void print_int32x4(const char* label, int32x4_t vector) {
 }
 
 // NEON version
-static void dct4x4dc_neon(int *d) {
+static void dct4x4dc_neon_real(int *d) {
   // hold the intermediate results
   int tmp[16];
   int32x4_t one_vector = vdupq_n_s32(1);
@@ -122,6 +125,65 @@ static void dct4x4dc_neon(int *d) {
     vst1q_s32(&d[i * 4], d_vector);
   }
 }
+
+
+static void dct4x4dc_neon(int *d) {
+    int32x4x4_t input;
+
+    input = vld4q_s32(d);
+
+    int32x4_t result_add_s01 = vaddq_s32(input.val[0], input.val[1]);
+    int32x4_t result_add_s23 = vaddq_s32(input.val[2], input.val[3]);
+    int32x4_t result_sub_d01 = vsubq_s32(input.val[0], input.val[1]);
+    int32x4_t result_sub_d23 = vsubq_s32(input.val[2], input.val[3]);
+
+    input.val[0] = vaddq_s32(result_add_s01, result_add_s23);
+    input.val[1] = vsubq_s32(result_add_s01, result_add_s23);
+    input.val[2] = vsubq_s32(result_sub_d01, result_sub_d23);
+    input.val[3] = vaddq_s32(result_sub_d01, result_sub_d23);
+
+    int32x4x4_t input_transposed;
+
+    input_transposed.val[0] = vsetq_lane_s32(vgetq_lane_s32(input.val[0], 0), input_transposed.val[0], 0);
+    input_transposed.val[0] = vsetq_lane_s32(vgetq_lane_s32(input.val[1], 0), input_transposed.val[0], 1);
+    input_transposed.val[0] = vsetq_lane_s32(vgetq_lane_s32(input.val[2], 0), input_transposed.val[0], 2);
+    input_transposed.val[0] = vsetq_lane_s32(vgetq_lane_s32(input.val[3], 0), input_transposed.val[0], 3);
+
+    input_transposed.val[1] = vsetq_lane_s32(vgetq_lane_s32(input.val[0], 1), input_transposed.val[1], 0);
+    input_transposed.val[1] = vsetq_lane_s32(vgetq_lane_s32(input.val[1], 1), input_transposed.val[1], 1);
+    input_transposed.val[1] = vsetq_lane_s32(vgetq_lane_s32(input.val[2], 1), input_transposed.val[1], 2);
+    input_transposed.val[1] = vsetq_lane_s32(vgetq_lane_s32(input.val[3], 1), input_transposed.val[1], 3);
+
+    input_transposed.val[2] = vsetq_lane_s32(vgetq_lane_s32(input.val[0], 2), input_transposed.val[2], 0);
+    input_transposed.val[2] = vsetq_lane_s32(vgetq_lane_s32(input.val[1], 2), input_transposed.val[2], 1);
+    input_transposed.val[2] = vsetq_lane_s32(vgetq_lane_s32(input.val[2], 2), input_transposed.val[2], 2);
+    input_transposed.val[2] = vsetq_lane_s32(vgetq_lane_s32(input.val[3], 2), input_transposed.val[2], 3);
+
+    input_transposed.val[3] = vsetq_lane_s32(vgetq_lane_s32(input.val[0], 3), input_transposed.val[3], 0);
+    input_transposed.val[3] = vsetq_lane_s32(vgetq_lane_s32(input.val[1], 3), input_transposed.val[3], 1);
+    input_transposed.val[3] = vsetq_lane_s32(vgetq_lane_s32(input.val[2], 3), input_transposed.val[3], 2);
+    input_transposed.val[3] = vsetq_lane_s32(vgetq_lane_s32(input.val[3], 3), input_transposed.val[3], 3);
+
+    int32x4_t result_add_s01_after = vaddq_s32(input_transposed.val[0], input_transposed.val[1]);
+    int32x4_t result_add_s23_after = vaddq_s32(input_transposed.val[2], input_transposed.val[3]);
+    int32x4_t result_sub_d01_after = vsubq_s32(input_transposed.val[0], input_transposed.val[1]);
+    int32x4_t result_sub_d23_after = vsubq_s32(input_transposed.val[2], input_transposed.val[3]);
+
+    int32x4_t result_add_all_tmp0_after = vaddq_s32(result_add_s01_after, result_add_s23_after);
+    int32x4_t result_sub_all_tmp1_after = vsubq_s32(result_add_s01_after, result_add_s23_after);
+    int32x4_t result_sub_all_tmp2_after = vsubq_s32(result_sub_d01_after, result_sub_d23_after);
+    int32x4_t result_add_all_tmp3_after = vaddq_s32(result_sub_d01_after, result_sub_d23_after);
+
+    int32x4_t one_vector = vdupq_n_s32(1);
+    input.val[0] = vshrq_n_s32(vaddq_s32(result_add_all_tmp0_after, one_vector), 1);
+    input.val[1] = vshrq_n_s32(vaddq_s32(result_sub_all_tmp1_after, one_vector), 1);
+    input.val[2] = vshrq_n_s32(vaddq_s32(result_sub_all_tmp2_after, one_vector), 1);
+    input.val[3] = vshrq_n_s32(vaddq_s32(result_add_all_tmp3_after, one_vector), 1);
+
+    vst4q_s32(d, input);
+}
+
+
 
 int main(int argc, char **argv) {
 
