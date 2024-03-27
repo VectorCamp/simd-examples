@@ -21,7 +21,7 @@ static void dct4x4dc_c(int d[16]) {
     int d01 = d[i * 4 + 0] - d[i * 4 + 1]; // diff between the 1st and the 2nd elements in the row
     int s23 = d[i * 4 + 2] + d[i * 4 + 3]; // sum of the 3d and 4th elements in the row
     int d23 = d[i * 4 + 2] - d[i * 4 + 3]; // diff between the 3d and the 4th elements in the row
-
+    //printf("s01: %d, s23: %d, d01: %d, d23: %d\n", s01, s23, d01, d23);
     tmp[0 * 4 + i] = s01 + s23; // 1st element of the row
     tmp[1 * 4 + i] = s01 - s23; // 2nd element of the row
     tmp[2 * 4 + i] = d01 - d23; // 3d element of the row
@@ -45,54 +45,79 @@ static void dct4x4dc_c(int d[16]) {
   }
 }
 
+void print_int32x4(const char* label, int32x4_t vector) {
+    int32_t data[4];
+    vst1q_s32(data, vector);
+    printf("%s: [%d %d %d %d]\n", label, data[0], data[1], data[2], data[3]);
+}
+
 // NEON version
 static void dct4x4dc_neon(int *d) {
   // hold the intermediate results
   int tmp[16];
+  int32x4_t one_vector = vdupq_n_s32(1);
 
-  // phase 1
+  // iterate over each row of the 4x4 block (phase 1)
   for (int i = 0; i < 4; i++) {
-    // Load the 4 elements of the current row into NEON registers
-    int32x4_t row = vld1q_s32(&d[i * 4]);
 
-    //s01+s23 = d1+d2+d3+d4
-    tmp[0 * 4 + i] = vaddvq_s32(row);
+    //[a b c d]
+    int32x4_t row1 = vld1q_s32(&d[i * 4]);
 
-    //first element is s01, second element is s23 and then I perform s01-s23
-    int32x2_t sum_halves = vpadd_s32(vget_low_s32(row), vget_high_s32(row));
-    tmp[1 * 4 + i] = vget_lane_s32(sum_halves, 0) - vget_lane_s32(sum_halves, 1);
+    //[b c d a] by shuffling the first row
+    int32x4_t shuffled_row = vextq_s32(row1, row1, 1);
 
-    //Extracts the low half of the elements from the row, which is [d1,d2]
-    //extends the low half of the row, shifting the elements by 1 position to the right, so it becomes [d2, 0]
-    //Subtracts the extended low half [d2, 0] from the original low half [d1, d2], element-wise
-    //d01 = [d1 - d2, d2 - 0] = [d1 - d2, d2]
-    //same for d23
+    //[s01 rand s23 rand]
+    int32x4_t result_add = vaddq_s32(row1, shuffled_row);
+    //[s23 rand s01 rand]
+    int32x4_t result_add_shuff = vextq_s32(result_add, result_add, 2);
+
+
+    //[d01 rand d23 rand]
+    int32x4_t result_sub = vsubq_s32(row1, shuffled_row);
+    //[d23 rand d01 rand]
+    int32x4_t result_sub_shuff = vextq_s32(result_sub, result_sub, 2);
+
+    int32x4_t tmp0 =vaddq_s32(result_add, result_add_shuff);
+    int32x4_t tmp1 =vsubq_s32(result_add, result_add_shuff);
+    int32x4_t tmp2 =vsubq_s32(result_sub, result_sub_shuff);
+    int32x4_t tmp3 =vaddq_s32(result_sub, result_sub_shuff);
     
-    int32x2_t d01 = vsub_s32(vget_low_s32(row), vext_s32(vget_low_s32(row), vget_low_s32(row), 1));
-    int32x2_t d23 = vsub_s32(vget_high_s32(row),vext_s32(vget_high_s32(row), vget_high_s32(row), 1));
-    tmp[2 * 4 + i] = vget_lane_s32(d01, 0) - vget_lane_s32(d23, 0);
-    tmp[3 * 4 + i] = vget_lane_s32(d01, 0) + vget_lane_s32(d23, 0);
+    tmp[0 * 4 + i] = vgetq_lane_s32(tmp0, 0);
+    tmp[1 * 4 + i] = vgetq_lane_s32(tmp1, 0);
+    tmp[2 * 4 + i] = vgetq_lane_s32(tmp2, 0);
+    tmp[3 * 4 + i] = vgetq_lane_s32(tmp3, 0);
+
   }
 
-  // phase 2
+  // iterates over each row of the 4x4 block (phase 2)
   for (int i = 0; i < 4; i++) {
 
-    //follow the same logic as phase 1
-    int32x4_t tmp_row = vld1q_s32(&tmp[i * 4]);
     int32x4_t d_vector = vdupq_n_s32(0);
-    int32x4_t one_vector = vdupq_n_s32(1);
-
-    // contains s01, s23
-    int32x2_t sum_halves = vpadd_s32(vget_low_s32(tmp_row), vget_high_s32(tmp_row));
-    d_vector = vsetq_lane_s32(vaddvq_s32(tmp_row), d_vector, 0);                                           
-    d_vector = vsetq_lane_s32(vget_lane_s32(sum_halves, 0) - vget_lane_s32(sum_halves, 1), d_vector, 1);
     
-    int32x2_t d01 = vsub_s32(vget_low_s32(tmp_row), vext_s32(vget_low_s32(tmp_row), vget_low_s32(tmp_row), 1));
-    int32x2_t d23 = vsub_s32(vget_high_s32(tmp_row),vext_s32(vget_high_s32(tmp_row), vget_high_s32(tmp_row), 1));
-    d_vector = vsetq_lane_s32(vget_lane_s32(d01, 0) - vget_lane_s32(d23, 0), d_vector, 2);
-    d_vector = vsetq_lane_s32(vget_lane_s32(d01, 0) + vget_lane_s32(d23, 0), d_vector, 3);
+    //[tmp0 tmp1 tmp2 tmp3]
+    int32x4_t row1 = vld1q_s32(&tmp[i * 4]);
 
-    //add 1 to each element and devide by 2 with the use of shifting right
+    //[tmp1 tmp2 tmp3 tmp0] by shuffling the first row
+    int32x4_t shuffled_row = vextq_s32(row1, row1, 1);
+    
+    //element 1 = s01, element 3 = s23
+    int32x4_t result_add = vaddq_s32(row1, shuffled_row);
+    int32x4_t result_add_shuff = vextq_s32(result_add, result_add, 2);
+
+    //element 1 = d01, element 3 = d23
+    int32x4_t result_sub = vsubq_s32(row1, shuffled_row);
+    int32x4_t result_sub_shuff = vextq_s32(result_sub, result_sub, 2);
+
+    int32x4_t tmp0 =vaddq_s32(result_add, result_add_shuff);
+    int32x4_t tmp1 =vsubq_s32(result_add, result_add_shuff);
+    int32x4_t tmp2 =vsubq_s32(result_sub, result_sub_shuff);
+    int32x4_t tmp3 =vaddq_s32(result_sub, result_sub_shuff);
+
+    d_vector= vsetq_lane_s32(vgetq_lane_s32(tmp0, 0),d_vector,0);
+    d_vector=vsetq_lane_s32(vgetq_lane_s32(tmp1, 0),d_vector,1);
+    d_vector=vsetq_lane_s32(vgetq_lane_s32(tmp2, 0),d_vector,2);
+    d_vector=vsetq_lane_s32(vgetq_lane_s32(tmp3, 0),d_vector,3);
+
     d_vector=vshrq_n_s32(vaddq_s32(d_vector, one_vector),1);
     vst1q_s32(&d[i * 4], d_vector);
   }
