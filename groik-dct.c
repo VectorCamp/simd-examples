@@ -23,10 +23,10 @@ dct4x4dc(dctcoef d[16]) {
         tmp[2 * 4 + i] = d01 - d23;
         tmp[3 * 4 + i] = d01 + d23;
     }
-    for (int i = 0; i < 16; i = i + 4) {
-        printf("in c %04x %04x %04x %04x\n", tmp[0 + i], tmp[1 + i], tmp[2 + i], tmp[3 + i]);
-    }
-    	printf("\n");
+    //for (int i = 0; i < 16; i = i + 4) {
+    //    printf("in c %04x %04x %04x %04x\n", tmp[0 + i], tmp[1 + i], tmp[2 + i], tmp[3 + i]);
+   // }
+    //	printf("\n");
     for (int i = 0; i < 4; i++) {
         int s01 = tmp[i * 4 + 0] + tmp[i * 4 + 1];
         int d01 = tmp[i * 4 + 0] - tmp[i * 4 + 1];
@@ -77,15 +77,19 @@ typedef union {
 
 static void v_dct4x4dc( dctcoef d[16] )
 {
+	/*
 	vector unsigned short ones = {1,1,1,1,1,1,1,1};
 	vec_u16_u da0, da1;
 	vec_u16_u tmp0, tmp1;
 	vec_u16_u b0, b1, b2, b3;
         vector signed short sv0, sv1;
+	*/
 
 /*  back to 4 element vectors... */
 
         vector unsigned int ones4 = {1,1,1,1};
+        //vector signed int ones4s = {1,1,1,1};
+        vector unsigned int high4 = {0xffff,0xffff,0xffff,0xffff};
 	vec_u32_u da40, da41, da42, da43;
 	vec_u32_u tmp40, tmp41, tmp42, tmp43;
 	vec_u32_u b40, b41, b42, b43;
@@ -101,14 +105,6 @@ static void v_dct4x4dc( dctcoef d[16] )
 /* as these are shorts we can fit 8 of them in now.
  * We can do both halves at once.  */
 
-	/* back to 4 element vectors 
-	da0.s[0]=d[0]; da0.s[1]=d[4]; da0.s[2]=d[8]; da0.s[3]=d[12];
-	da0.s[4]=d[2]; da0.s[5]=d[6]; da0.s[6]=d[10]; da0.s[7]=d[14];
-
-	da1.s[0]=d[1]; da1.s[1]=d[5]; da1.s[2]=d[9]; da1.s[3]=d[13];
-	da1.s[4]=d[3]; da1.s[5]=d[7]; da1.s[6]=d[11]; da1.s[7]=d[15];
-	*/
-
 	da40.s[0]=d[0]; da40.s[1]=d[4]; da40.s[2]=d[8]; da40.s[3]=d[12];
 	da41.s[0]=d[2]; da41.s[1]=d[6]; da41.s[2]=d[10]; da41.s[3]=d[14];
 
@@ -122,10 +118,6 @@ static void v_dct4x4dc( dctcoef d[16] )
  * then a vector subtract between da[2] and da[3], into b[3] -difs23
  */
 
-	/* back to 4 element vectors 
-	b0.v=vec_add(da0.v,da1.v);
-	b1.v=vec_sub(da0.v,da1.v);
-	*/
 	b40.v=vec_add(da40.v,da42.v);
 	b41.v=vec_add(da41.v,da43.v);
 	b42.v=vec_sub(da40.v,da42.v);
@@ -137,42 +129,47 @@ static void v_dct4x4dc( dctcoef d[16] )
  * then, a vector add of b[2] + b[3], into tmp[3]
  */
 
-	/* now because were using 8-long vectors we need to swap the halves of
-	 * two vectors - the first half of b0 and the first half of b1, and the 
-	 * second half of b0 and b1 */  
-	//memcpy(b2.s,b0.s,8*sizeof(unsigned short));
-
-	/* stick first half of b1 into second half of b0 */
-	//memcpy(b0.s+4,b1.s,4*sizeof(unsigned short));
-	/* stick second half of b0 (saved in b2) in first half of b1 */
-	//memcpy(b1.s,b2.s+4,4*sizeof(unsigned short));
-
-	/* back to 4 vectors 
-	tmp0.v=vec_add(b0.v,b1.v);
-	tmp1.v=vec_sub(b0.v,b1.v);
-	*/
-
 	tmp40.v=vec_add(b40.v,b41.v);
 	tmp41.v=vec_sub(b40.v,b41.v);
 	tmp42.v=vec_sub(b42.v,b43.v);
 	tmp43.v=vec_add(b42.v,b43.v);
 
+	/* this seems absurd, but masking out bits above short size fixes
+	 * the output. Actually using shorts, leaves occasional dangling
+	 * high bit issues. */
+	/* what i understand to be the case, is that the reference implementation
+	 * uses signed ints for the intermediate values. underflow sets all
+	 * the high bits and then when we shift down we pull those bits down
+	 * with us, so occasionally we'll see a 16 bit output value with the 
+	 * high bit set even after the shift down at the end should have killed
+	 * it - but because of the +1 right before that, we cannot actually
+	 * fit the computation into 16 bit values because we might need to
+	 * overflow by one bit, there. 
+	 * here in the vectorized implementation, there seems to be no fix
+	 * in using vectors of signed values, the same problem is observed, so
+	 * there is something still not understood at work in the vectorized version,
+	 * which is fixed by this ugly hack of masking out these values at
+	 * the midpoint in the processing. Doing this, the results are always correct.
+	 */
+	b40.v=vec_and(tmp40.v,high4);
+	tmp40=b40;
+	b40.v=vec_and(tmp41.v,high4);
+	tmp41=b40;
+	b40.v=vec_and(tmp42.v,high4);
+	tmp42=b40;
+	b40.v=vec_and(tmp43.v,high4);
+	tmp43=b40;
 
 /* now were halfway through, with what the first loop did.
  * we have a similar job to do once more on the values in tmp. 
  */
 	/*
-	printf("in v %04x %04x %04x %04x\n", tmp0.s[0], tmp0.s[1], tmp0.s[2], tmp0.s[3]);
-	printf("in v %04x %04x %04x %04x\n", tmp1.s[0], tmp1.s[1], tmp1.s[2], tmp1.s[3]);
-	printf("in v %04x %04x %04x %04x\n", tmp0.s[4], tmp0.s[5], tmp0.s[6], tmp0.s[7]);
-	printf("in v %04x %04x %04x %04x\n", tmp1.s[4], tmp1.s[5], tmp1.s[6], tmp1.s[7]);
-	printf("\n");
-	*/
 	printf("in v %04x %04x %04x %04x\n", tmp40.s[0], tmp40.s[1], tmp40.s[2], tmp40.s[3]);
 	printf("in v %04x %04x %04x %04x\n", tmp41.s[0], tmp41.s[1], tmp41.s[2], tmp41.s[3]);
 	printf("in v %04x %04x %04x %04x\n", tmp42.s[0], tmp42.s[1], tmp42.s[2], tmp42.s[3]);
 	printf("in v %04x %04x %04x %04x\n", tmp43.s[0], tmp43.s[1], tmp43.s[2], tmp43.s[3]);
 	printf("\n");
+	*/
 
     /* need to set up, da as, 
     *  vector unsigned int {tmp[0],tmp[4],tmp[8],tmp[12]}
@@ -183,48 +180,19 @@ static void v_dct4x4dc( dctcoef d[16] )
 	/* this might be where a transpose operation would be handy. 
 	 * for now we copy it manually */
 
-	/* now with 8 element vectors, the 0 and 3 columns looking vertically are
-	* from tmp0 and the middle two are from tmp1 */
-	/*
-	da0.s[0]=tmp0.s[0]; da0.s[1]=tmp1.s[0]; da0.s[2]=tmp1.s[4]; da0.s[3]=tmp0.s[4];
-	da1.s[0]=tmp0.s[1]; da1.s[1]=tmp1.s[1]; da1.s[2]=tmp1.s[5]; da1.s[3]=tmp0.s[5];
-
-	da0.s[4]=tmp0.s[2]; da0.s[5]=tmp1.s[2]; da0.s[6]=tmp1.s[6]; da0.s[7]=tmp0.s[6];
-	da1.s[4]=tmp0.s[3]; da1.s[5]=tmp1.s[3]; da1.s[6]=tmp1.s[7]; da1.s[7]=tmp0.s[7];
-	*/
-
 	da40.s[0]=tmp40.s[0]; da40.s[1]=tmp41.s[0]; da40.s[2]=tmp42.s[0]; da40.s[3]=tmp43.s[0];
-	da41.s[0]=tmp40.s[1]; da40.s[1]=tmp41.s[1]; da40.s[2]=tmp42.s[1]; da40.s[3]=tmp43.s[1];
-	da42.s[0]=tmp40.s[2]; da40.s[1]=tmp41.s[2]; da40.s[2]=tmp42.s[2]; da40.s[3]=tmp43.s[2];
-	da43.s[0]=tmp40.s[3]; da40.s[1]=tmp41.s[3]; da40.s[2]=tmp42.s[3]; da40.s[3]=tmp43.s[3];
+	da41.s[0]=tmp40.s[1]; da41.s[1]=tmp41.s[1]; da41.s[2]=tmp42.s[1]; da41.s[3]=tmp43.s[1];
+	da42.s[0]=tmp40.s[2]; da42.s[1]=tmp41.s[2]; da42.s[2]=tmp42.s[2]; da42.s[3]=tmp43.s[2];
+	da43.s[0]=tmp40.s[3]; da43.s[1]=tmp41.s[3]; da43.s[2]=tmp42.s[3]; da43.s[3]=tmp43.s[3];
 
 
 /* then the same two sets of operations commented above, again leaving
  * results in tmp. */
-	/* back to 4 vectors
-	b0.v=vec_add(da0.v,da1.v);
-	b1.v=vec_sub(da0.v,da1.v);
-	*/
 
 	b40.v=vec_add(da40.v,da41.v);
 	b41.v=vec_add(da42.v,da43.v);
 	b42.v=vec_sub(da40.v,da41.v);
 	b43.v=vec_sub(da42.v,da43.v);
-
-	/* again because were using 8-long vectors we need to swap the halves of
-	 * two vectors - the first half of b0 and the first half of b1, and the 
-	 * second half of b0 and b1 */  
-	//memcpy(b2.s,b0.s,8*sizeof(unsigned short));
-
-	/* stick first half of b1 into second half of b0 */
-	//memcpy(b0.s+4,b1.s,4*sizeof(unsigned short));
-	/* stick second half of b0 (saved in b2) in first half of b1 */
-	//memcpy(b1.s,b2.s+4,4*sizeof(unsigned short));
-
-	/* back to 4 vecs 
-	tmp0.v=vec_add(b0.v,b1.v);
-	tmp1.v=vec_sub(b0.v,b1.v);
-	*/
 
 	tmp40.v=vec_add(b40.v,b41.v);
 	tmp41.v=vec_sub(b40.v,b41.v);
@@ -239,18 +207,17 @@ static void v_dct4x4dc( dctcoef d[16] )
  * then add tmp[2]+=ones
  * then add tmp[3]+=ones
  */
-
 	
-	/*
-	b0.v=vec_add(tmp0.v,ones);
-	b1.v=vec_add(tmp1.v,ones);
-	*/
-
 	b40.v=vec_add(tmp40.v,ones4);
 	b41.v=vec_add(tmp41.v,ones4);
 	b42.v=vec_add(tmp42.v,ones4);
 	b43.v=vec_add(tmp43.v,ones4);
-
+	/*
+	b40.v=vec_sr(vec_add(tmp40.v,ones4),ones4);
+	b41.v=vec_sr(vec_add(tmp41.v,ones4),ones4);
+	b42.v=vec_sr(vec_add(tmp42.v,ones4),ones4);
+	b43.v=vec_sr(vec_add(tmp43.v,ones4),ones4);
+	*/
 
 /* then shift d[0]=tmp[0]>>1
  * then shift d[0]=[1]=tmp[1]>>1
@@ -259,53 +226,11 @@ static void v_dct4x4dc( dctcoef d[16] )
  * , finally putting the result values back into d.
  */
 
-         	
-	/*
-	sv0=vec_sr((vector signed short)b0.v,ones);
-	sv1=vec_sr((vector signed short)b1.v,ones);
-	tmp0.v=(vector unsigned short)sv0;
-	tmp1.v=(vector unsigned short)sv1;
-	*/
-	/*
-	tmp0.v=(vector unsigned short)vec_sr((vector signed short)b0.v,ones);
-	tmp1.v=(vector unsigned short)vec_sr((vector signed short)b1.v,ones);
-	*/
-	
-	/*
-        tmp0.v=vec_sr(b0.v,ones);
-	tmp1.v=vec_sr(b1.v,ones);
-	*/
-	/* try skipping the shift 
-	tmp0=b0;
-	tmp1=b1;
-	*/
-
-	
         tmp40.v=vec_sr(b40.v,ones4);
         tmp41.v=vec_sr(b41.v,ones4);
         tmp42.v=vec_sr(b42.v,ones4);
         tmp43.v=vec_sr(b43.v,ones4);
-	
-
-	/* the mapping is again, tmp0 going down cols 0 and 3, tmp1 down cols 1,2 */
-
 	/*
-        d[0]=tmp0.s[0];
-        d[4]=tmp0.s[1];
-        d[8]=tmp0.s[2];
-        d[12]=tmp0.s[3];
-        d[1]=tmp1.s[0];
-        d[5]=tmp1.s[1];
-        d[9]=tmp1.s[2];
-        d[13]=tmp1.s[3];
-        d[2]=tmp1.s[4];
-        d[6]=tmp1.s[5];
-        d[10]=tmp1.s[6];
-        d[14]=tmp1.s[7];
-        d[3]=tmp0.s[4];
-        d[7]=tmp0.s[5];
-        d[11]=tmp0.s[6];
-        d[15]=tmp0.s[7];
 	*/
 
 	/* 4 vecs mapping */
@@ -326,11 +251,24 @@ static void v_dct4x4dc( dctcoef d[16] )
         d[11]=tmp43.s[2];
         d[15]=tmp43.s[3];
 
-	/* we skipped the shift in there, lets do it out here, yuck! */
+	/* 4 vecs mapping */
 	/*
-	for(int i=0; i<16; i++){
-	d[i]=(signed short)(d[i]+1)>>1;
-	}
+        d[0]=b40.s[0];
+        d[4]=b40.s[1];
+        d[8]=b40.s[2];
+        d[12]=b40.s[3];
+        d[1]=b41.s[0];
+        d[5]=b41.s[1];
+        d[9]=b41.s[2];
+        d[13]=b41.s[3];
+        d[2]=b42.s[0];
+        d[6]=b42.s[1];
+        d[10]=b42.s[2];
+        d[14]=b42.s[3];
+        d[3]=b43.s[0];
+        d[7]=b43.s[1];
+        d[11]=b43.s[2];
+        d[15]=b43.s[3];
 	*/
 
 }
