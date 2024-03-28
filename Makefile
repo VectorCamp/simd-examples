@@ -8,7 +8,8 @@ ALL= average_avx512\
         average_sse\
         scalarxmat44\
         mat44xmat44\
-        vect4xmat44 
+        vect4xmat44\
+		dct
 all: $(ALL)
 
 average_sse: average_sse.c
@@ -27,6 +28,8 @@ mat44xmat44: mat44xmat44.c
 	$(CC) $(CFLAGS) -mavx2 -mavx512f mat44xmat44.c -o mat44xmat44
 vect4xmat44: vect4xmat44.c
 	$(CC) $(CFLAGS) -mavx2 -mavx512f -mfma vect4xmat44.c -o vect4xmat44
+dct: dct.c
+	$(CC) $(CFLAGS) -msse4.1 dct.c -o dct
 
 else ifeq ($(filter $(ARCH),arm64 aarch64),$(ARCH))
 CFLAGS += -march=native
