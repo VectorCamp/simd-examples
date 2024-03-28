@@ -33,10 +33,17 @@ dct4x4dc(dctcoef d[16]) {
         int s23 = tmp[i * 4 + 2] + tmp[i * 4 + 3];
         int d23 = tmp[i * 4 + 2] - tmp[i * 4 + 3];
 
+/*
         d[i * 4 + 0] = (s01 + s23 + 1) >> 1;
         d[i * 4 + 1] = (s01 - s23 + 1) >> 1;
         d[i * 4 + 2] = (d01 - d23 + 1) >> 1;
         d[i * 4 + 3] = (d01 + d23 + 1) >> 1;
+*/
+	/* try skipping the shift for a sec */
+        d[i * 4 + 0] = (s01 + s23 + 1);
+        d[i * 4 + 1] = (s01 - s23 + 1);
+        d[i * 4 + 2] = (d01 - d23 + 1);
+        d[i * 4 + 3] = (d01 + d23 + 1);
     }
 }
 
@@ -66,12 +73,6 @@ static void v_dct4x4dc( dctcoef d[16] )
      *  d[2],d[6],d[10],d[14]
      *  d[3],d[7],d[11],d[15]
      */
-	/* not 32b  after all
-	da0.s[0]=d[0]; da0.s[1]=d[4]; da0.s[2]=d[8]; da0.s[3]=d[12];
-	da1.s[0]=d[1]; da1.s[1]=d[5]; da1.s[2]=d[9]; da1.s[3]=d[13];
-	da2.s[0]=d[2]; da2.s[1]=d[6]; da2.s[2]=d[10]; da2.s[3]=d[14];
-	da3.s[0]=d[3]; da3.s[1]=d[7]; da3.s[2]=d[11]; da3.s[3]=d[15];
-	*/
 
 /* as these are shorts we can fit 8 of them in now.
  * We can do both halves at once.  */
@@ -91,11 +92,6 @@ static void v_dct4x4dc( dctcoef d[16] )
 
 	b0.v=vec_add(da0.v,da1.v);
 	b1.v=vec_sub(da0.v,da1.v);
-	/* it's all in those two vectors now */
-	/*
-	b2=vec_add(da2.v,da3.v);
-	b3=vec_sub(da2.v,da3.v);
-	*/
 
 /* then, a vector add of b[0] + b[1], into tmp[0]
  * then, a vector subtract  of b[0] - b[1], into tmp[1]
@@ -116,10 +112,6 @@ static void v_dct4x4dc( dctcoef d[16] )
 	tmp0.v=vec_add(b0.v,b1.v);
 	tmp1.v=vec_sub(b0.v,b1.v);
 
-	/*
-	tmp2.v=vec_sub(b2,b3);
-	tmp3.v=vec_add(b2,b3);
-	*/
 
 /* now were halfway through, with what the first loop did.
  * we have a similar job to do once more on the values in tmp. 
@@ -141,13 +133,6 @@ static void v_dct4x4dc( dctcoef d[16] )
 	/* this might be where a transpose operation would be handy. 
 	 * for now we copy it manually */
 
-	/*
-	da0.s[0]=tmp0.s[0]; da0.s[1]=tmp1.s[0]; da0.s[2]=tmp2.s[0]; da0.s[3]=tmp3.s[0];
-	da1.s[0]=tmp0.s[1]; da1.s[1]=tmp1.s[1]; da1.s[2]=tmp2.s[1]; da1.s[3]=tmp3.s[1];
-	da2.s[0]=tmp0.s[2]; da2.s[1]=tmp1.s[2]; da2.s[2]=tmp2.s[2]; da2.s[3]=tmp3.s[2];
-	da3.s[0]=tmp0.s[3]; da3.s[1]=tmp1.s[3]; da3.s[2]=tmp2.s[3]; da3.s[3]=tmp3.s[3];
-	*/
-
 	/* now with 8 element vectors, the 0 and 3 columns looking vertically are
 	* from tmp0 and the middle two are from tmp1 */
 	da0.s[0]=tmp0.s[0]; da0.s[1]=tmp1.s[0]; da0.s[2]=tmp1.s[4]; da0.s[3]=tmp0.s[4];
@@ -161,10 +146,6 @@ static void v_dct4x4dc( dctcoef d[16] )
  * results in tmp. */
 	b0.v=vec_add(da0.v,da1.v);
 	b1.v=vec_sub(da0.v,da1.v);
-	/*
-	b2=vec_add(da2.v,da3.v);
-	b3=vec_sub(da2.v,da3.v);
-	*/
 
 	/* again because were using 8-long vectors we need to swap the halves of
 	 * two vectors - the first half of b0 and the first half of b1, and the 
@@ -178,10 +159,6 @@ static void v_dct4x4dc( dctcoef d[16] )
 
 	tmp0.v=vec_add(b0.v,b1.v);
 	tmp1.v=vec_sub(b0.v,b1.v);
-	/*
-	tmp2.v=vec_sub(b2,b3);
-	tmp3.v=vec_add(b2,b3);
-	*/
 
 /* now the final steps, adding one and dividing in half */
 /* then, fill ones with {1,1,1,1} */
@@ -194,10 +171,6 @@ static void v_dct4x4dc( dctcoef d[16] )
 
 	b0.v=vec_add(tmp0.v,ones);
 	b1.v=vec_add(tmp1.v,ones);
-	/*
-	b2=vec_add(tmp2.v,ones);
-	b3=vec_add(tmp3.v,ones);
-	*/
 
 /* then shift d[0]=tmp[0]>>1
  * then shift d[0]=[1]=tmp[1]>>1
@@ -205,12 +178,12 @@ static void v_dct4x4dc( dctcoef d[16] )
  * then shift d[0]=[3]=tmp[3]>>1
  * , finally putting the result values back into d.
  */
+	/* try skipping the shift 
 	tmp0.v=vec_sr(b0.v,ones);
 	tmp1.v=vec_sr(b1.v,ones);
-	/*
-	tmp2.v=vec_sl(b2,ones);
-	tmp3.v=vec_sl(b3,ones);
 	*/
+	tmp0=b0;
+	tmp1=b1;
 
 	/* the mapping is again, tmp0 going down cols 0 and 3, tmp1 down cols 1,2 */
 
