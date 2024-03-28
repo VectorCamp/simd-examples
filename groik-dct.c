@@ -24,7 +24,7 @@ dct4x4dc(dctcoef d[16]) {
         tmp[3 * 4 + i] = d01 + d23;
     }
     for (int i = 0; i < 16; i = i + 4) {
-        printf("in dct_c %04x %04x %04x %04x\n", tmp[0 + i], tmp[1 + i], tmp[2 + i], tmp[3 + i]);
+        printf("in c %04x %04x %04x %04x\n", tmp[0 + i], tmp[1 + i], tmp[2 + i], tmp[3 + i]);
     }
     	printf("\n");
     for (int i = 0; i < 4; i++) {
@@ -114,13 +114,15 @@ static void v_dct4x4dc( dctcoef d[16] )
 	 * two vectors - the first half of b0 and the first half of b1, and the 
 	 * second half of b0 and b1 */  
 	memcpy(b2.s,b0.s,8*sizeof(unsigned short));
-	memcpy(b3.s,b1.s,8*sizeof(unsigned short));
 
+	/* stick first half of b1 into second half of b0 */
 	memcpy(b0.s+4,b1.s,4*sizeof(unsigned short));
-	memcpy(b1.s,b1.s+4,4*sizeof(unsigned short));
+	/* stick second half of b0 (saved in b2) in first half of b1 */
+	memcpy(b1.s,b2.s+4,4*sizeof(unsigned short));
 
 	tmp0.v=vec_add(b0.v,b1.v);
 	tmp1.v=vec_sub(b0.v,b1.v);
+
 	/*
 	tmp2.v=vec_sub(b2,b3);
 	tmp3.v=vec_add(b2,b3);
@@ -153,11 +155,13 @@ static void v_dct4x4dc( dctcoef d[16] )
 	da3.s[0]=tmp0.s[3]; da3.s[1]=tmp1.s[3]; da3.s[2]=tmp2.s[3]; da3.s[3]=tmp3.s[3];
 	*/
 
-	da0.s[0]=tmp0.s[0]; da0.s[1]=tmp1.s[0]; da0.s[2]=tmp0.s[4]; da0.s[3]=tmp1.s[4];
-	da1.s[0]=tmp0.s[1]; da1.s[1]=tmp1.s[1]; da1.s[2]=tmp0.s[5]; da1.s[3]=tmp1.s[5];
+	/* now with 8 element vectors, the 0 and 3 columns looking vertically are
+	* from tmp0 and the middle two are from tmp1 */
+	da0.s[0]=tmp0.s[0]; da0.s[1]=tmp1.s[0]; da0.s[2]=tmp1.s[4]; da0.s[3]=tmp0.s[4];
+	da1.s[0]=tmp0.s[1]; da1.s[1]=tmp1.s[1]; da1.s[2]=tmp1.s[5]; da1.s[3]=tmp0.s[5];
 
-	da0.s[4]=tmp0.s[2]; da0.s[5]=tmp1.s[2]; da0.s[6]=tmp0.s[6]; da0.s[7]=tmp1.s[6];
-	da1.s[4]=tmp0.s[3]; da1.s[5]=tmp1.s[3]; da1.s[6]=tmp0.s[7]; da1.s[7]=tmp1.s[7];
+	da0.s[4]=tmp0.s[2]; da0.s[5]=tmp1.s[2]; da0.s[6]=tmp1.s[6]; da0.s[7]=tmp0.s[6];
+	da1.s[4]=tmp0.s[3]; da1.s[5]=tmp1.s[3]; da1.s[6]=tmp1.s[7]; da1.s[7]=tmp0.s[7];
 
 
 /* then the same two sets of operations commented above, again leaving
@@ -168,6 +172,16 @@ static void v_dct4x4dc( dctcoef d[16] )
 	b2=vec_add(da2.v,da3.v);
 	b3=vec_sub(da2.v,da3.v);
 	*/
+
+	/* again because were using 8-long vectors we need to swap the halves of
+	 * two vectors - the first half of b0 and the first half of b1, and the 
+	 * second half of b0 and b1 */  
+	memcpy(b2.s,b0.s,8*sizeof(unsigned short));
+
+	/* stick first half of b1 into second half of b0 */
+	memcpy(b0.s+4,b1.s,4*sizeof(unsigned short));
+	/* stick second half of b0 (saved in b2) in first half of b1 */
+	memcpy(b1.s,b2.s+4,4*sizeof(unsigned short));
 
 	tmp0.v=vec_add(b0.v,b1.v);
 	tmp1.v=vec_sub(b0.v,b1.v);
