@@ -23,10 +23,10 @@ dct4x4dc(dctcoef d[16]) {
         tmp[2 * 4 + i] = d01 - d23;
         tmp[3 * 4 + i] = d01 + d23;
     }
-    //for (int i = 0; i < 16; i = i + 4) {
-    //    printf("in dct_c %02x %02x %02x %02x\n", tmp[0 + i], tmp[1 + i], tmp[2 + i], tmp[3 + i]);
-    //}
-    //	printf("\n");
+    for (int i = 0; i < 16; i = i + 4) {
+        printf("in dct_c %04x %04x %04x %04x\n", tmp[0 + i], tmp[1 + i], tmp[2 + i], tmp[3 + i]);
+    }
+    	printf("\n");
     for (int i = 0; i < 4; i++) {
         int s01 = tmp[i * 4 + 0] + tmp[i * 4 + 1];
         int d01 = tmp[i * 4 + 0] - tmp[i * 4 + 1];
@@ -55,8 +55,8 @@ typedef union {
 static void v_dct4x4dc( dctcoef d[16] )
 {
 	vector unsigned short ones = {1,1,1,1,1,1,1,1};
-	vec_u16_u da0, da1, da2, da3;
-	vec_u16_u tmp0, tmp1, tmp2, tmp3;
+	vec_u16_u da0, da1;
+	vec_u16_u tmp0, tmp1;
 	vec_u16_u b0, b1, b2, b3;
 
 
@@ -97,10 +97,10 @@ static void v_dct4x4dc( dctcoef d[16] )
 	b3=vec_sub(da2.v,da3.v);
 	*/
 	/*
-	printf("in v %02x %02x %02x %02x\n", b0.s[0], b0.s[1], b0.s[2], b0.s[3]);
-	printf("in v %02x %02x %02x %02x\n", b1.s[0], b1.s[1], b1.s[2], b1.s[3]);
-	printf("in v %02x %02x %02x %02x\n", b0.s[4], b0.s[5], b0.s[6], b0.s[7]);
-	printf("in v %02x %02x %02x %02x\n", b1.s[4], b1.s[5], b1.s[6], b1.s[7]);
+	printf("in v %04x %04x %04x %04x\n", b0.s[0], b0.s[1], b0.s[2], b0.s[3]);
+	printf("in v %04x %04x %04x %04x\n", b1.s[0], b1.s[1], b1.s[2], b1.s[3]);
+	printf("in v %04x %04x %04x %04x\n", b0.s[4], b0.s[5], b0.s[6], b0.s[7]);
+	printf("in v %04x %04x %04x %04x\n", b1.s[4], b1.s[5], b1.s[6], b1.s[7]);
 	printf("\n");
 	*/
 
@@ -109,6 +109,16 @@ static void v_dct4x4dc( dctcoef d[16] )
  * then, a vector subtract of b[2] - b[3], into tmp[2]
  * then, a vector add of b[2] + b[3], into tmp[3]
  */
+
+	/* now because were using 8-long vectors we need to swap the halves of
+	 * two vectors - the first half of b0 and the first half of b1, and the 
+	 * second half of b0 and b1 */  
+	memcpy(b2.s,b0.s,8*sizeof(unsigned short));
+	memcpy(b3.s,b1.s,8*sizeof(unsigned short));
+
+	memcpy(b0.s+4,b1.s,4*sizeof(unsigned short));
+	memcpy(b1.s,b1.s+4,4*sizeof(unsigned short));
+
 	tmp0.v=vec_add(b0.v,b1.v);
 	tmp1.v=vec_sub(b0.v,b1.v);
 	/*
@@ -119,11 +129,12 @@ static void v_dct4x4dc( dctcoef d[16] )
 /* now were halfway through, with what the first loop did.
  * we have a similar job to do once more on the values in tmp. 
  */
+	printf("in v %04x %04x %04x %04x\n", tmp0.s[0], tmp0.s[1], tmp0.s[2], tmp0.s[3]);
+	printf("in v %04x %04x %04x %04x\n", tmp1.s[0], tmp1.s[1], tmp1.s[2], tmp1.s[3]);
+	printf("in v %04x %04x %04x %04x\n", tmp0.s[4], tmp0.s[5], tmp0.s[6], tmp0.s[7]);
+	printf("in v %04x %04x %04x %04x\n", tmp1.s[4], tmp1.s[5], tmp1.s[6], tmp1.s[7]);
+	printf("\n");
 	/*
-	printf("in v %02x %02x %02x %02x\n", tmp0.s[0], tmp0.s[1], tmp0.s[2], tmp0.s[3]);
-	printf("in v %02x %02x %02x %02x\n", tmp1.s[0], tmp1.s[1], tmp1.s[2], tmp1.s[3]);
-	printf("in v %02x %02x %02x %02x\n", tmp0.s[4], tmp0.s[5], tmp0.s[6], tmp0.s[7]);
-	printf("in v %02x %02x %02x %02x\n", tmp1.s[4], tmp1.s[5], tmp1.s[6], tmp1.s[7]);
 	*/
 
     /* need to set up, da as, 
@@ -181,14 +192,14 @@ static void v_dct4x4dc( dctcoef d[16] )
 	b3=vec_add(tmp3.v,ones);
 	*/
 
-/* then shift d[0]=tmp[0]<<1
- * then shift d[0]=[1]=tmp[1]<<1
- * then shift d[0]=[2]=tmp[2]<<1
- * then shift d[0]=[3]=tmp[3]<<1
+/* then shift d[0]=tmp[0]>>1
+ * then shift d[0]=[1]=tmp[1]>>1
+ * then shift d[0]=[2]=tmp[2]>>1
+ * then shift d[0]=[3]=tmp[3]>>1
  * , finally putting the result values back into d.
  */
-	tmp0.v=vec_sl(b0.v,ones);
-	tmp1.v=vec_sl(b1.v,ones);
+	tmp0.v=vec_sr(b0.v,ones);
+	tmp1.v=vec_sr(b1.v,ones);
 	/*
 	tmp2.v=vec_sl(b2,ones);
 	tmp3.v=vec_sl(b3,ones);
@@ -242,12 +253,12 @@ main() {
 
     printf("\nMatrix after dct4x4dc:\n");
     for (int i = 0; i < 16; i += 4) {
-        printf("%02x %02x %02x %02x\n", matrix[i], matrix[i + 1], matrix[i + 2], matrix[i + 3]);
+        printf("%04x %04x %04x %04x\n", matrix[i], matrix[i + 1], matrix[i + 2], matrix[i + 3]);
     }
 
     printf("\nMatrix2 after v_dct4x4dc:\n");
     for (int i = 0; i < 16; i += 4) {
-        printf("%02x %02x %02x %02x\n", matrix2[i], matrix2[i + 1], matrix2[i + 2], matrix2[i + 3]);
+        printf("%04x %04x %04x %04x\n", matrix2[i], matrix2[i + 1], matrix2[i + 2], matrix2[i + 3]);
     }
 
     long seconds1 = mid.tv_sec - start.tv_sec;
