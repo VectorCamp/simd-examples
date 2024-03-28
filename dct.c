@@ -11,7 +11,7 @@ print_vector(__m128i v) {
     uint16_t buf[8];
     _mm_storeu_si128((__m128i *) buf, v);
     for (int i = 0; i < 8; i++) {
-        printf("%02x ", buf[i]);
+        printf("%x ", buf[i]);
     }
     printf("\n");
 }
@@ -31,9 +31,12 @@ dct4x4dc(dctcoef d[16]) {
         tmp[2 * 4 + i] = d01 - d23;
         tmp[3 * 4 + i] = d01 + d23;
     }
-    for (int i = 0; i < 16; i = i + 4) {
-        printf("in dct_c %02x %02x %02x %02x\n", tmp[0 + i], tmp[1 + i], tmp[2 + i], tmp[3 + i]);
+
+    printf("\n");
+    for (int i = 0; i < 16; i += 4) {
+        printf("%02x %02x %02x %02x\n", tmp[i], tmp[i + 1], tmp[i + 2], tmp[i + 3]);
     }
+
     for (int i = 0; i < 4; i++) {
         int s01 = tmp[i * 4 + 0] + tmp[i * 4 + 1];
         int d01 = tmp[i * 4 + 0] - tmp[i * 4 + 1];
@@ -52,56 +55,99 @@ dct4x4dc_sse(dctcoef d[16]) {
     dctcoef dT[4][4];   // This will hold the transposed matrix
 
     // Load the rows of d into 128-bit vectors
-    __m128i row1row2 = _mm_set_epi16(d[7], d[6], d[5], d[4], d[3], d[2], d[1], d[0]);
-    __m128i row3row4 = _mm_set_epi16(d[15], d[14], d[13], d[12], d[11], d[10], d[9], d[8]);
-
+    __m128i row1row2 = _mm_loadu_si128((__m128i *) &d[0]);
+    __m128i row3row4 = _mm_loadu_si128((__m128i *) &d[8]);   // load instead of set
     __m128i tmp1 = _mm_unpacklo_epi16(row1row2, row3row4);
     __m128i tmp3 = _mm_unpackhi_epi16(row1row2, row3row4);
-    __m128i tmp1_new = _mm_unpacklo_epi16(tmp1, tmp3);
-    __m128i tmp3_new = _mm_unpackhi_epi16(tmp1, tmp3);
-    __m128i upper_half_tmp1 = _mm_srli_si128(tmp1_new, 8);
-    _mm_storel_epi64((__m128i *) &dT[1][0], upper_half_tmp1);
-    _mm_storel_epi64((__m128i *) &dT[0][0], _mm_move_epi64(tmp1_new));
-    _mm_storel_epi64((__m128i *) &dT[3][0], _mm_srli_si128(tmp3_new, 8));
-    _mm_storel_epi64((__m128i *) &dT[2][0], _mm_move_epi64(tmp3_new));
-    // load rows from transposed d
-    row1row2 = _mm_loadu_si128((__m128i *) dT[0]);
-    row3row4 = _mm_loadu_si128((__m128i *) dT[2]);
-    // 1st + 2nd +3rd +4rth
-    __m128i totalSum = _mm_add_epi16(row1row2, row3row4);
-    __m128i shuffled = _mm_shuffle_epi32(totalSum, _MM_SHUFFLE(2, 3, 3, 2));
-    totalSum = _mm_add_epi16(totalSum, shuffled);
-    _mm_storel_epi64((__m128i *) dT[0], totalSum);
-    // 1st + 2nd -3rd -4rth
-    totalSum = _mm_sub_epi16(row1row2, row3row4);
-    shuffled = _mm_shuffle_epi32(totalSum, _MM_SHUFFLE(2, 3, 3, 2));
-    totalSum = _mm_add_epi16(totalSum, shuffled);
-    _mm_storel_epi64((__m128i *) dT[1], totalSum);
-    // 1st - 2nd -3rd +4rth
-    __m128i mask1 = _mm_setr_epi16(0, 0, 0, 0, -1, -1, -1, -1);
-    __m128i mask2 = _mm_setr_epi16(-1, -1, -1, -1, 0, 0, 0, 0);
-    __m128i zero = _mm_setzero_si128();
-    __m128i signMask1 = _mm_cmplt_epi16(mask1, zero);
-    __m128i signMask2 = _mm_cmplt_epi16(mask2, zero);
-    row1row2 = _mm_sub_epi16(_mm_andnot_si128(signMask1, row1row2), _mm_and_si128(signMask1, row1row2));
-    row3row4 = _mm_sub_epi16(_mm_andnot_si128(signMask2, row3row4), _mm_and_si128(signMask2, row3row4));
-    totalSum = _mm_add_epi16(row1row2, row3row4);
-    shuffled = _mm_shuffle_epi32(totalSum, _MM_SHUFFLE(2, 3, 3, 2));
-    totalSum = _mm_add_epi16(totalSum, shuffled);
-    _mm_storel_epi64((__m128i *) dT[2], totalSum);
-    // 1st - 2nd +3rd -4rth
-    totalSum = _mm_sub_epi16(row1row2, row3row4);
-    shuffled = _mm_shuffle_epi32(totalSum, _MM_SHUFFLE(2, 3, 3, 2));
-    totalSum = _mm_add_epi16(totalSum, shuffled);
-    _mm_storel_epi64((__m128i *) dT[3], totalSum);
+    row1row2 = _mm_unpacklo_epi16(tmp1, tmp3);
+    row3row4 = _mm_unpackhi_epi16(tmp1, tmp3);
 
+    __m128i totalSum1 = _mm_add_epi16(row1row2, row3row4);
+    __m128i totalSum2 = _mm_sub_epi16(row1row2, row3row4);
+    __m128i shuffled1 = _mm_shuffle_epi32(totalSum1, _MM_SHUFFLE(2, 3, 3, 2));
+    __m128i shuffled2 = _mm_shuffle_epi32(totalSum2, _MM_SHUFFLE(2, 3, 3, 2));
+    totalSum1 = _mm_add_epi16(totalSum1, shuffled1);
+    totalSum2 = _mm_add_epi16(totalSum2, shuffled2);
+    // 1st + 2nd +3rd +4rth
+    // 1st + 2nd -3rd -4rth
+    // 1st - 2nd -3rd +4rth
+    __m128i maskFF = _mm_set1_epi16(0xFF);
+    __m128i zero = _mm_setzero_si128();
+    __m128i mask1 = _mm_slli_si128(maskFF, 8);
+    __m128i mask2 = _mm_srli_si128(maskFF, 8);
+    __m128i masked_part = _mm_and_si128(mask1, row1row2);
+    __m128i neg_masked_part = _mm_sub_epi16(zero, masked_part);
+    row1row2 = _mm_or_si128(_mm_andnot_si128(mask1, row1row2), neg_masked_part);
+    masked_part = _mm_and_si128(mask2, row3row4);
+    neg_masked_part = _mm_sub_epi16(zero, masked_part);
+    row3row4 = _mm_or_si128(_mm_andnot_si128(mask2, row3row4), neg_masked_part);
+
+    __m128i totalSum3 = _mm_add_epi16(row1row2, row3row4);
+    __m128i shuffled3 = _mm_shuffle_epi32(totalSum3, _MM_SHUFFLE(2, 3, 3, 2));
+    totalSum3 = _mm_add_epi16(totalSum3, shuffled3);
+    // 1st - 2nd +3rd -4rth
+    __m128i totalSum4 = _mm_sub_epi16(row1row2, row3row4);
+    __m128i shuffled4 = _mm_shuffle_epi32(totalSum4, _MM_SHUFFLE(2, 3, 3, 2));
+    totalSum4 = _mm_add_epi16(totalSum4, shuffled4);
+
+    _mm_storel_epi64((__m128i *) dT[0], totalSum1);
+    _mm_storel_epi64((__m128i *) dT[1], totalSum2);
+    _mm_storel_epi64((__m128i *) dT[2], totalSum3);
+    _mm_storel_epi64((__m128i *) dT[3], totalSum4);
+    printf("\n");
     /*
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            printf("%02x ", (uint16_t) dT[i][j]);
-        }
-        printf("\n");
-    }*/
+    // PHASE 2
+    row1row2 = _mm_loadu_si128((__m128i *) &dT[0][0]);
+    row3row4 = _mm_loadu_si128((__m128i *) &dT[2][0]);   // load instead of set
+
+    // transpose dT back
+    __m128i ones = _mm_set1_epi32(1);   // to divide
+    tmp1 = _mm_unpacklo_epi16(row1row2, row3row4);
+    tmp3 = _mm_unpackhi_epi16(row1row2, row3row4);
+    row1row2 = _mm_unpacklo_epi16(tmp1, tmp3);
+    row3row4 = _mm_unpackhi_epi16(tmp1, tmp3);
+
+    printf("\n\n");
+    print_vector(row1row2);
+    print_vector(row3row4);
+    /*
+    __m128i row1 = _mm_loadu_si128((__m128i *) &d[0]);
+    __m128i extended_row1 = _mm_unpacklo_epi16(row1, zero);
+    __m128i row2 = _mm_loadu_si128((__m128i *) &d[4]);
+    __m128i extended_row2 = _mm_unpacklo_epi16(row2, zero);
+    __m128i row3 = _mm_loadu_si128((__m128i *) &d[8]);
+    __m128i extended_row3 = _mm_unpacklo_epi16(row3, zero);
+    __m128i row4 = _mm_loadu_si128((__m128i *) &d[12]);
+    __m128i extended_row4 = _mm_unpacklo_epi16(row4, zero);
+    // 1st + 2nd +3rd +4rth
+
+    __m128i tempSum = _mm_add_epi32(extended_row1, extended_row2);
+    totalSum = _mm_add_epi32(extended_row3, extended_row4);
+    totalSum = _mm_add_epi32(totalSum, tempSum);
+    totalSum = _mm_add_epi32(totalSum, ones);
+    totalSum = _mm_srli_epi32(totalSum, 1);
+
+    print_vector(totalSum);
+    _mm_storeu_si64((__m128i *) &d[0], _mm_packs_epi32(totalSum, totalSum));
+
+    printf("\n");
+    for (int i = 0; i < 16; i += 4) {
+        printf("%02x %02x %02x %02x\n", d[i], d[i + 1], d[i + 2], d[i + 3]);
+    }
+    // 1st + 2nd +3rd +4rth
+    totalSum = _mm_add_epi32(row1, row3row4);
+    shuffled = _mm_shuffle_epi32(totalSum, _MM_SHUFFLE(2, 3, 3, 2));
+    totalSum = _mm_add_epi16(totalSum, shuffled);
+
+    printf("\n");
+    totalSum = _mm_add_epi16(totalSum, ones);
+    _mm_storel_epi64((__m128i *) &d[0], _mm_srli_epi16(totalSum, 1));
+    * /
+    /*
+       // 1st + 2nd -3rd -4rth
+       // 1st - 2nd -3rd +4rth
+       // 1st - 2nd +3rd -4rth
+       */
 }
 int
 main() {
@@ -123,14 +169,14 @@ main() {
     dct4x4dc_sse(matrix2);
     clock_gettime(CLOCK_MONOTONIC, &end);
 
-    // printf("\nMatrix after dct4x4dc:\n");
+    printf("\nMatrix after dct4x4dc:\n");
     for (int i = 0; i < 16; i += 4) {
-        // printf("%02x %02x %02x %02x\n", matrix[i], matrix[i + 1], matrix[i + 2], matrix[i + 3]);
+        printf("%02x %02x %02x %02x\n", matrix[i], matrix[i + 1], matrix[i + 2], matrix[i + 3]);
     }
 
-    // printf("\nMatrix2 after dct4x4dc_sse:\n");
+    printf("\nMatrix2 after dct4x4dc_sse:\n");
     for (int i = 0; i < 16; i += 4) {
-        // printf("%02x %02x %02x %02x\n", matrix2[i], matrix2[i + 1], matrix2[i + 2], matrix2[i + 3]);
+        printf("%02x %02x %02x %02x\n", matrix2[i], matrix2[i + 1], matrix2[i + 2], matrix2[i + 3]);
     }
 
     long seconds1 = mid.tv_sec - start.tv_sec;
