@@ -24,9 +24,10 @@ dct4x4dc(dctcoef d[16]) {
         tmp[2 * 4 + i] = d01 - d23;
         tmp[3 * 4 + i] = d01 + d23;
     }
-    //for (int i = 0; i < 16; i = i + 4) {
-    //    printf("in dct_c %02x %02x %02x %02x\n", tmp[0 + i], tmp[1 + i], tmp[2 + i], tmp[3 + i]);
-    //}
+    for (int i = 0; i < 16; i = i + 4) {
+        printf("in dct_c %02x %02x %02x %02x\n", tmp[0 + i], tmp[1 + i], tmp[2 + i], tmp[3 + i]);
+    }
+	printf("\n");
     for (int i = 0; i < 4; i++) {
         int s01 = tmp[i * 4 + 0] + tmp[i * 4 + 1];
         int d01 = tmp[i * 4 + 0] - tmp[i * 4 + 1];
@@ -96,6 +97,11 @@ static void v_dct4x4dc( dctcoef d[16] )
 	b2=vec_add(da2.v,da3.v);
 	b3=vec_sub(da2.v,da3.v);
 	*/
+	printf("in v %02x %02x %02x %02x\n", tmp0.s[0], tmp0.s[1], tmp0.s[2], tmp0.s[3]);
+	printf("in v %02x %02x %02x %02x\n", tmp1.s[0], tmp1.s[1], tmp1.s[2], tmp1.s[3]);
+	printf("in v %02x %02x %02x %02x\n", tmp0.s[4], tmp0.s[5], tmp0.s[6], tmp0.s[7]);
+	printf("in v %02x %02x %02x %02x\n", tmp1.s[4], tmp1.s[5], tmp1.s[6], tmp1.s[7]);
+	printf("\n");
 
 /* then, a vector add of b[0] + b[1], into tmp[0]
  * then, a vector subtract  of b[0] - b[1], into tmp[1]
@@ -112,6 +118,11 @@ static void v_dct4x4dc( dctcoef d[16] )
 /* now were halfway through, with what the first loop did.
  * we have a similar job to do once more on the values in tmp. 
  */
+	printf("in v %02x %02x %02x %02x\n", tmp0.s[0], tmp0.s[1], tmp0.s[2], tmp0.s[3]);
+	printf("in v %02x %02x %02x %02x\n", tmp1.s[0], tmp1.s[1], tmp1.s[2], tmp1.s[3]);
+	printf("in v %02x %02x %02x %02x\n", tmp0.s[4], tmp0.s[5], tmp0.s[6], tmp0.s[7]);
+	printf("in v %02x %02x %02x %02x\n", tmp1.s[4], tmp1.s[5], tmp1.s[6], tmp1.s[7]);
+
     /* need to set up, da as, 
     *  vector unsigned int {tmp[0],tmp[4],tmp[8],tmp[12]}
     * ... tmp[1],tmp[5],tmp[9],tmp[13]
