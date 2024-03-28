@@ -46,21 +46,8 @@ dct4x4dc(dctcoef d[16]) {
 
 #include <altivec.h>
 /* these lifted from x264's ppc header */
-#define vec_u16_t vector unsigned short
-#define vec_s16_t vector signed short
 #define vec_s32_t vector signed int
 #define vec_u32_t vector unsigned int
-
-
-typedef union {
-  uint16_t s[8];
-  vec_u16_t v;
-} vec_u16_u;
-
-typedef union {
-  int16_t s[8];
-  vec_s16_t v;
-} vec_s16_u;
 
 typedef union {
   int32_t s[4];
@@ -77,14 +64,6 @@ typedef union {
 
 static void v_dct4x4dc( dctcoef d[16] )
 {
-	/*
-	vector unsigned short ones = {1,1,1,1,1,1,1,1};
-	vec_u16_u da0, da1;
-	vec_u16_u tmp0, tmp1;
-	vec_u16_u b0, b1, b2, b3;
-        vector signed short sv0, sv1;
-	*/
-
 /*  back to 4 element vectors... */
 
         vector unsigned int ones4 = {1,1,1,1};
@@ -151,6 +130,9 @@ static void v_dct4x4dc( dctcoef d[16] )
 	 * which is fixed by this ugly hack of masking out these values at
 	 * the midpoint in the processing. Doing this, the results are always correct.
 	 */
+	/* i suspect the compiler is doing extra copies when we assign
+	 * the values like this, and doing it as below allows the compiler to
+	 * be a bit smarter about it..
 	b40.v=vec_and(tmp40.v,high4);
 	tmp40=b40;
 	b40.v=vec_and(tmp41.v,high4);
@@ -159,6 +141,11 @@ static void v_dct4x4dc( dctcoef d[16] )
 	tmp42=b40;
 	b40.v=vec_and(tmp43.v,high4);
 	tmp43=b40;
+	*/
+	tmp40.v=vec_and(tmp40.v,high4);
+	tmp41.v=vec_and(tmp41.v,high4);
+	tmp42.v=vec_and(tmp42.v,high4);
+	tmp43.v=vec_and(tmp43.v,high4);
 
 /* now were halfway through, with what the first loop did.
  * we have a similar job to do once more on the values in tmp. 
@@ -177,7 +164,7 @@ static void v_dct4x4dc( dctcoef d[16] )
     *  tmp[2],tmp[6],tmp[10],tmp[14]
     *  tmp[3],tmp[7],tmp[11],tmp[15]
     */
-	/* this might be where a transpose operation would be handy. 
+	/* this might be where a transpose or map operation would be handy. 
 	 * for now we copy it manually */
 
 	da40.s[0]=tmp40.s[0]; da40.s[1]=tmp41.s[0]; da40.s[2]=tmp42.s[0]; da40.s[3]=tmp43.s[0];
@@ -200,24 +187,12 @@ static void v_dct4x4dc( dctcoef d[16] )
 	tmp43.v=vec_add(b42.v,b43.v);
 
 /* now the final steps, adding one and dividing in half */
-/* then, fill ones with {1,1,1,1} */
 
 /* then add tmp[0]+=ones
  * then add tmp[1]+=ones
  * then add tmp[2]+=ones
  * then add tmp[3]+=ones
  */
-	
-	b40.v=vec_add(tmp40.v,ones4);
-	b41.v=vec_add(tmp41.v,ones4);
-	b42.v=vec_add(tmp42.v,ones4);
-	b43.v=vec_add(tmp43.v,ones4);
-	/*
-	b40.v=vec_sr(vec_add(tmp40.v,ones4),ones4);
-	b41.v=vec_sr(vec_add(tmp41.v,ones4),ones4);
-	b42.v=vec_sr(vec_add(tmp42.v,ones4),ones4);
-	b43.v=vec_sr(vec_add(tmp43.v,ones4),ones4);
-	*/
 
 /* then shift d[0]=tmp[0]>>1
  * then shift d[0]=[1]=tmp[1]>>1
@@ -225,13 +200,10 @@ static void v_dct4x4dc( dctcoef d[16] )
  * then shift d[0]=[3]=tmp[3]>>1
  * , finally putting the result values back into d.
  */
-
-        tmp40.v=vec_sr(b40.v,ones4);
-        tmp41.v=vec_sr(b41.v,ones4);
-        tmp42.v=vec_sr(b42.v,ones4);
-        tmp43.v=vec_sr(b43.v,ones4);
-	/*
-	*/
+	tmp40.v=vec_sr(vec_add(tmp40.v,ones4),ones4);
+	tmp41.v=vec_sr(vec_add(tmp41.v,ones4),ones4);
+	tmp42.v=vec_sr(vec_add(tmp42.v,ones4),ones4);
+	tmp43.v=vec_sr(vec_add(tmp43.v,ones4),ones4);
 
 	/* 4 vecs mapping */
         d[0]=tmp40.s[0];
@@ -250,26 +222,6 @@ static void v_dct4x4dc( dctcoef d[16] )
         d[7]=tmp43.s[1];
         d[11]=tmp43.s[2];
         d[15]=tmp43.s[3];
-
-	/* 4 vecs mapping */
-	/*
-        d[0]=b40.s[0];
-        d[4]=b40.s[1];
-        d[8]=b40.s[2];
-        d[12]=b40.s[3];
-        d[1]=b41.s[0];
-        d[5]=b41.s[1];
-        d[9]=b41.s[2];
-        d[13]=b41.s[3];
-        d[2]=b42.s[0];
-        d[6]=b42.s[1];
-        d[10]=b42.s[2];
-        d[14]=b42.s[3];
-        d[3]=b43.s[0];
-        d[7]=b43.s[1];
-        d[11]=b43.s[2];
-        d[15]=b43.s[3];
-	*/
 
 }
 
