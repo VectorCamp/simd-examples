@@ -1,10 +1,10 @@
-#include <emmintrin.h>
+#include <smmintrin.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 
-#define N 1000000000
+#define N 100
 typedef uint16_t dctcoef;
 void
 print_vector(__m128i v) {
@@ -31,11 +31,11 @@ dct4x4dc(dctcoef d[16]) {
         tmp[2 * 4 + i] = d01 - d23;
         tmp[3 * 4 + i] = d01 + d23;
     }
-
+    /*
     printf("\n");
     for (int i = 0; i < 16; i += 4) {
         printf("%02x %02x %02x %02x\n", tmp[i], tmp[i + 1], tmp[i + 2], tmp[i + 3]);
-    }
+    }*/
 
     for (int i = 0; i < 4; i++) {
         int s01 = tmp[i * 4 + 0] + tmp[i * 4 + 1];
@@ -94,8 +94,6 @@ dct4x4dc_sse(dctcoef d[16]) {
     _mm_storel_epi64((__m128i *) dT[1], totalSum2);
     _mm_storel_epi64((__m128i *) dT[2], totalSum3);
     _mm_storel_epi64((__m128i *) dT[3], totalSum4);
-    printf("\n");
-    /*
     // PHASE 2
     row1row2 = _mm_loadu_si128((__m128i *) &dT[0][0]);
     row3row4 = _mm_loadu_si128((__m128i *) &dT[2][0]);   // load instead of set
@@ -107,47 +105,60 @@ dct4x4dc_sse(dctcoef d[16]) {
     row1row2 = _mm_unpacklo_epi16(tmp1, tmp3);
     row3row4 = _mm_unpackhi_epi16(tmp1, tmp3);
 
-    printf("\n\n");
-    print_vector(row1row2);
-    print_vector(row3row4);
-    /*
-    __m128i row1 = _mm_loadu_si128((__m128i *) &d[0]);
-    __m128i extended_row1 = _mm_unpacklo_epi16(row1, zero);
-    __m128i row2 = _mm_loadu_si128((__m128i *) &d[4]);
-    __m128i extended_row2 = _mm_unpacklo_epi16(row2, zero);
-    __m128i row3 = _mm_loadu_si128((__m128i *) &d[8]);
-    __m128i extended_row3 = _mm_unpacklo_epi16(row3, zero);
-    __m128i row4 = _mm_loadu_si128((__m128i *) &d[12]);
-    __m128i extended_row4 = _mm_unpacklo_epi16(row4, zero);
+    __m128i row1_32 = _mm_unpacklo_epi16(row1row2, zero);
+    __m128i row2_32 = _mm_unpackhi_epi16(row1row2, zero);
+    __m128i row3_32 = _mm_unpacklo_epi16(row3row4, zero);
+    __m128i row4_32 = _mm_unpackhi_epi16(row3row4, zero);
     // 1st + 2nd +3rd +4rth
+    __m128i totalSum11 = _mm_add_epi32(row1_32, row2_32);
+    __m128i totalSum12 = _mm_add_epi32(row3_32, row4_32);
+    totalSum11 = _mm_add_epi32(totalSum11, totalSum12);
+    totalSum11 = _mm_add_epi32(totalSum11, ones);
+    totalSum11 = _mm_srli_epi32(totalSum11, 1);
+    __m128i mask = _mm_set1_epi32(0x0000FFFF);
 
-    __m128i tempSum = _mm_add_epi32(extended_row1, extended_row2);
-    totalSum = _mm_add_epi32(extended_row3, extended_row4);
-    totalSum = _mm_add_epi32(totalSum, tempSum);
-    totalSum = _mm_add_epi32(totalSum, ones);
-    totalSum = _mm_srli_epi32(totalSum, 1);
+    // 1st + 2nd -3rd -4rth
+    // Perform bitwise AND operation to keep only the lower 16 bits of each 32-bit integer
+    totalSum11 = _mm_and_si128(totalSum11, mask);
+    totalSum11 = _mm_packus_epi32(totalSum11, zero);
 
-    print_vector(totalSum);
-    _mm_storeu_si64((__m128i *) &d[0], _mm_packs_epi32(totalSum, totalSum));
+    __m128i totalSum21 = _mm_add_epi32(row1_32, row2_32);
+    __m128i totalSum22 = _mm_add_epi32(row3_32, row4_32);
+    totalSum21 = _mm_sub_epi32(totalSum21, totalSum22);
+    totalSum21 = _mm_add_epi32(totalSum21, ones);
+    totalSum21 = _mm_srli_epi32(totalSum21, 1);
+    totalSum21 = _mm_and_si128(totalSum21, mask);   // keep only the lower 16 bits of each 32-bit integer
+    totalSum21 = _mm_packus_epi32(totalSum21, zero);
 
-    printf("\n");
-    for (int i = 0; i < 16; i += 4) {
-        printf("%02x %02x %02x %02x\n", d[i], d[i + 1], d[i + 2], d[i + 3]);
-    }
-    // 1st + 2nd +3rd +4rth
-    totalSum = _mm_add_epi32(row1, row3row4);
-    shuffled = _mm_shuffle_epi32(totalSum, _MM_SHUFFLE(2, 3, 3, 2));
-    totalSum = _mm_add_epi16(totalSum, shuffled);
+    __m128i totalSum31 = _mm_sub_epi32(row1_32, row2_32);
+    __m128i totalSum32 = _mm_sub_epi32(row4_32, row3_32);
+    totalSum31 = _mm_add_epi32(totalSum31, totalSum32);
+    totalSum31 = _mm_add_epi32(totalSum31, ones);
+    totalSum31 = _mm_srli_epi32(totalSum31, 1);
+    totalSum31 = _mm_and_si128(totalSum31, mask);   // keep only the lower 16 bits of each 32-bit integer
+    totalSum31 = _mm_packus_epi32(totalSum31, zero);
+    // 1st - 2nd -3rd +4rth
+    __m128i totalSum41 = _mm_sub_epi32(row1_32, row2_32);
+    __m128i totalSum42 = _mm_sub_epi32(row3_32, row4_32);
+    totalSum41 = _mm_add_epi32(totalSum41, totalSum42);
+    totalSum41 = _mm_add_epi32(totalSum41, ones);
+    totalSum41 = _mm_srli_epi32(totalSum41, 1);
+    totalSum41 = _mm_and_si128(totalSum41, mask);   // keep only the lower 16 bits of each 32-bit integer
+    totalSum41 = _mm_packus_epi32(totalSum41, zero);
 
-    printf("\n");
-    totalSum = _mm_add_epi16(totalSum, ones);
-    _mm_storel_epi64((__m128i *) &d[0], _mm_srli_epi16(totalSum, 1));
-    * /
-    /*
-       // 1st + 2nd -3rd -4rth
-       // 1st - 2nd -3rd +4rth
-       // 1st - 2nd +3rd -4rth
-       */
+    _mm_storel_epi64((__m128i *) &d[0], totalSum11);
+    _mm_storel_epi64((__m128i *) &d[4], totalSum21);
+    _mm_storel_epi64((__m128i *) &d[8], totalSum31);
+    _mm_storel_epi64((__m128i *) &d[12], totalSum41);
+
+    row1row2 = _mm_loadu_si128((__m128i *) &d[0]);
+    row3row4 = _mm_loadu_si128((__m128i *) &d[8]);   // load instead of set
+    tmp1 = _mm_unpacklo_epi16(row1row2, row3row4);
+    tmp3 = _mm_unpackhi_epi16(row1row2, row3row4);
+    _mm_storel_epi64((__m128i *) &d[0], _mm_move_epi64(_mm_unpacklo_epi16(tmp1, tmp3)));
+    _mm_storel_epi64((__m128i *) &d[4], _mm_srli_si128(_mm_unpacklo_epi16(tmp1, tmp3), 8));
+    _mm_storel_epi64((__m128i *) &d[8], _mm_move_epi64(_mm_unpackhi_epi16(tmp1, tmp3)));
+    _mm_storel_epi64((__m128i *) &d[12], _mm_srli_si128(_mm_unpackhi_epi16(tmp1, tmp3), 8));
 }
 int
 main() {
