@@ -227,21 +227,21 @@ static void v_dct4x4dc( dctcoef d[16] )
 	*/
 
         d[0]=tmp0.s[0];
-        d[1]=tmp0.s[1];
-        d[2]=tmp0.s[2];
-        d[3]=tmp0.s[3];
-        d[4]=tmp1.s[0];
+        d[4]=tmp0.s[1];
+        d[8]=tmp0.s[2];
+        d[12]=tmp0.s[3];
+        d[1]=tmp1.s[0];
         d[5]=tmp1.s[1];
-        d[6]=tmp1.s[2];
-        d[7]=tmp1.s[3];
-        d[8]=tmp0.s[4];
-        d[9]=tmp0.s[5];
-        d[10]=tmp0.s[6];
-        d[11]=tmp0.s[7];
-        d[12]=tmp1.s[4];
-        d[13]=tmp1.s[5];
-        d[14]=tmp1.s[6];
-        d[15]=tmp1.s[7];
+        d[9]=tmp1.s[2];
+        d[13]=tmp1.s[3];
+        d[2]=tmp1.s[4];
+        d[6]=tmp1.s[5];
+        d[10]=tmp1.s[6];
+        d[14]=tmp1.s[7];
+        d[3]=tmp0.s[4];
+        d[7]=tmp0.s[5];
+        d[11]=tmp0.s[6];
+        d[15]=tmp0.s[7];
 
 }
 
