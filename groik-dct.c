@@ -1,4 +1,3 @@
-//#include <emmintrin.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,10 +23,10 @@ dct4x4dc(dctcoef d[16]) {
         tmp[2 * 4 + i] = d01 - d23;
         tmp[3 * 4 + i] = d01 + d23;
     }
-    for (int i = 0; i < 16; i = i + 4) {
-        printf("in dct_c %02x %02x %02x %02x\n", tmp[0 + i], tmp[1 + i], tmp[2 + i], tmp[3 + i]);
-    }
-	printf("\n");
+    //for (int i = 0; i < 16; i = i + 4) {
+    //    printf("in dct_c %02x %02x %02x %02x\n", tmp[0 + i], tmp[1 + i], tmp[2 + i], tmp[3 + i]);
+    //}
+    //	printf("\n");
     for (int i = 0; i < 4; i++) {
         int s01 = tmp[i * 4 + 0] + tmp[i * 4 + 1];
         int d01 = tmp[i * 4 + 0] - tmp[i * 4 + 1];
@@ -58,7 +57,7 @@ static void v_dct4x4dc( dctcoef d[16] )
 	vector unsigned short ones = {1,1,1,1,1,1,1,1};
 	vec_u16_u da0, da1, da2, da3;
 	vec_u16_u tmp0, tmp1, tmp2, tmp3;
-	vector unsigned short b0, b1, b2, b3;
+	vec_u16_u b0, b1, b2, b3;
 
 
     /* need to set up, da as, 
@@ -90,26 +89,28 @@ static void v_dct4x4dc( dctcoef d[16] )
  * then a vector subtract between da[2] and da[3], into b[3] -difs23
  */
 
-	b0=vec_add(da0.v,da1.v);
-	b1=vec_sub(da0.v,da1.v);
+	b0.v=vec_add(da0.v,da1.v);
+	b1.v=vec_sub(da0.v,da1.v);
 	/* it's all in those two vectors now */
 	/*
 	b2=vec_add(da2.v,da3.v);
 	b3=vec_sub(da2.v,da3.v);
 	*/
-	printf("in v %02x %02x %02x %02x\n", tmp0.s[0], tmp0.s[1], tmp0.s[2], tmp0.s[3]);
-	printf("in v %02x %02x %02x %02x\n", tmp1.s[0], tmp1.s[1], tmp1.s[2], tmp1.s[3]);
-	printf("in v %02x %02x %02x %02x\n", tmp0.s[4], tmp0.s[5], tmp0.s[6], tmp0.s[7]);
-	printf("in v %02x %02x %02x %02x\n", tmp1.s[4], tmp1.s[5], tmp1.s[6], tmp1.s[7]);
+	/*
+	printf("in v %02x %02x %02x %02x\n", b0.s[0], b0.s[1], b0.s[2], b0.s[3]);
+	printf("in v %02x %02x %02x %02x\n", b1.s[0], b1.s[1], b1.s[2], b1.s[3]);
+	printf("in v %02x %02x %02x %02x\n", b0.s[4], b0.s[5], b0.s[6], b0.s[7]);
+	printf("in v %02x %02x %02x %02x\n", b1.s[4], b1.s[5], b1.s[6], b1.s[7]);
 	printf("\n");
+	*/
 
 /* then, a vector add of b[0] + b[1], into tmp[0]
  * then, a vector subtract  of b[0] - b[1], into tmp[1]
  * then, a vector subtract of b[2] - b[3], into tmp[2]
  * then, a vector add of b[2] + b[3], into tmp[3]
  */
-	tmp0.v=vec_add(b0,b1);
-	tmp1.v=vec_sub(b0,b1);
+	tmp0.v=vec_add(b0.v,b1.v);
+	tmp1.v=vec_sub(b0.v,b1.v);
 	/*
 	tmp2.v=vec_sub(b2,b3);
 	tmp3.v=vec_add(b2,b3);
@@ -118,10 +119,12 @@ static void v_dct4x4dc( dctcoef d[16] )
 /* now were halfway through, with what the first loop did.
  * we have a similar job to do once more on the values in tmp. 
  */
+	/*
 	printf("in v %02x %02x %02x %02x\n", tmp0.s[0], tmp0.s[1], tmp0.s[2], tmp0.s[3]);
 	printf("in v %02x %02x %02x %02x\n", tmp1.s[0], tmp1.s[1], tmp1.s[2], tmp1.s[3]);
 	printf("in v %02x %02x %02x %02x\n", tmp0.s[4], tmp0.s[5], tmp0.s[6], tmp0.s[7]);
 	printf("in v %02x %02x %02x %02x\n", tmp1.s[4], tmp1.s[5], tmp1.s[6], tmp1.s[7]);
+	*/
 
     /* need to set up, da as, 
     *  vector unsigned int {tmp[0],tmp[4],tmp[8],tmp[12]}
@@ -148,15 +151,15 @@ static void v_dct4x4dc( dctcoef d[16] )
 
 /* then the same two sets of operations commented above, again leaving
  * results in tmp. */
-	b0=vec_add(da0.v,da1.v);
-	b1=vec_sub(da0.v,da1.v);
+	b0.v=vec_add(da0.v,da1.v);
+	b1.v=vec_sub(da0.v,da1.v);
 	/*
 	b2=vec_add(da2.v,da3.v);
 	b3=vec_sub(da2.v,da3.v);
 	*/
 
-	tmp0.v=vec_add(b0,b1);
-	tmp1.v=vec_sub(b0,b1);
+	tmp0.v=vec_add(b0.v,b1.v);
+	tmp1.v=vec_sub(b0.v,b1.v);
 	/*
 	tmp2.v=vec_sub(b2,b3);
 	tmp3.v=vec_add(b2,b3);
@@ -171,8 +174,8 @@ static void v_dct4x4dc( dctcoef d[16] )
  * then add tmp[3]+=ones
  */
 
-	b0=vec_add(tmp0.v,ones);
-	b1=vec_add(tmp1.v,ones);
+	b0.v=vec_add(tmp0.v,ones);
+	b1.v=vec_add(tmp1.v,ones);
 	/*
 	b2=vec_add(tmp2.v,ones);
 	b3=vec_add(tmp3.v,ones);
@@ -184,8 +187,8 @@ static void v_dct4x4dc( dctcoef d[16] )
  * then shift d[0]=[3]=tmp[3]<<1
  * , finally putting the result values back into d.
  */
-	tmp0.v=vec_sl(b0,ones);
-	tmp1.v=vec_sl(b1,ones);
+	tmp0.v=vec_sl(b0.v,ones);
+	tmp1.v=vec_sl(b1.v,ones);
 	/*
 	tmp2.v=vec_sl(b2,ones);
 	tmp3.v=vec_sl(b3,ones);
