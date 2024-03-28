@@ -225,9 +225,15 @@ static void v_dct4x4dc( dctcoef d[16] )
 
 }
 
+
+#define ITER 100000
+
 int
 main() {
     struct timespec start, mid, end;
+	long s1sum=0, s2sum=0, n1sum=0, n2sum=0;
+	int z=ITER;
+	while(z--){
     srand(time(NULL));
     // srand(42);
     dctcoef matrix[16];
@@ -239,16 +245,19 @@ main() {
         matrix[i] = rand() & 0xFF;   // 8 bit unsigned
         matrix2[i] = matrix[i];
     }
+    /*
     printf("Original matrix:\n");
     for (int i = 0; i < 16; i += 4) {
         printf("%02x %02x %02x %02x\n", matrix[i], matrix[i + 1], matrix[i + 2], matrix[i + 3]);
     }
+	*/
     clock_gettime(CLOCK_MONOTONIC, &start);
     dct4x4dc(matrix);
     clock_gettime(CLOCK_MONOTONIC, &mid);
     v_dct4x4dc(matrix2);
     clock_gettime(CLOCK_MONOTONIC, &end);
 
+	/*
     printf("\nMatrix after dct4x4dc:\n");
     for (int i = 0; i < 16; i += 4) {
         printf("%04x %04x %04x %04x\n", matrix[i], matrix[i + 1], matrix[i + 2], matrix[i + 3]);
@@ -258,6 +267,7 @@ main() {
     for (int i = 0; i < 16; i += 4) {
         printf("%04x %04x %04x %04x\n", matrix2[i], matrix2[i + 1], matrix2[i + 2], matrix2[i + 3]);
     }
+	*/
 
     long seconds1 = mid.tv_sec - start.tv_sec;
     long nanoseconds1 = mid.tv_nsec - start.tv_nsec;
@@ -271,8 +281,26 @@ main() {
         seconds2--;
         nanoseconds2 += 1000000000;
     }
+	s1sum+=seconds1;
+	s2sum+=seconds2;
+	n1sum+=nanoseconds1;
+	n2sum+=nanoseconds2;
+	if(n1sum>1000000000){
+		s1sum++;
+		n1sum-=1000000000;
+		}
+	if(n2sum>1000000000){
+		s2sum++;
+		n2sum-=1000000000;
+		}
+	}/*z*/
+	/*
     printf("scalar: %ld.%09ld seconds\n", seconds1, nanoseconds1);
     printf("VSX   : %ld.%09ld seconds\n", seconds2, nanoseconds2);
+	*/
+	printf("%d iterations:\n", ITER);
+    printf("scalar: %ld.%09ld seconds\n", s1sum, n1sum);
+    printf("VSX   : %ld.%09ld seconds\n", s2sum, n2sum);
 
 
 	/* lets try a shift here... */
