@@ -90,14 +90,14 @@ dct4x4dc_sse(dctcoef d[16]) {
     __m128i shuffled4 = _mm_shuffle_epi32(totalSum4, _MM_SHUFFLE(2, 3, 3, 2));
     totalSum4 = _mm_add_epi16(totalSum4, shuffled4);
 
-    _mm_storel_epi64((__m128i *) dT[0], totalSum1);
-    _mm_storel_epi64((__m128i *) dT[1], totalSum2);
-    _mm_storel_epi64((__m128i *) dT[2], totalSum3);
-    _mm_storel_epi64((__m128i *) dT[3], totalSum4);
-    // PHASE 2
-    row1row2 = _mm_loadu_si128((__m128i *) &dT[0][0]);
-    row3row4 = _mm_loadu_si128((__m128i *) &dT[2][0]);   // load instead of set
+    _mm_storel_epi64((__m128i *) &d[0], totalSum1);
+    _mm_storel_epi64((__m128i *) &d[4], totalSum2);
+    _mm_storel_epi64((__m128i *) &d[8], totalSum3);
+    _mm_storel_epi64((__m128i *) &d[12], totalSum4);
 
+    // PHASE 2
+    row1row2 = _mm_loadu_si128((__m128i *) &d[0]);
+    row3row4 = _mm_loadu_si128((__m128i *) &d[8]);
     // transpose dT back
     __m128i ones = _mm_set1_epi32(1);   // to divide
     tmp1 = _mm_unpacklo_epi16(row1row2, row3row4);
