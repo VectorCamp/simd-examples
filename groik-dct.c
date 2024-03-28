@@ -100,31 +100,6 @@ static void v_dct4x4dc( dctcoef d[16] )
 	tmp2.v=vec_sl(b2,ones);
 	tmp3.v=vec_sl(b3,ones);
 
-	/* aha turned out i read the wrong typedef, 
-	 * these are actually 16 bit vals, thats why this segfaulted
-	memcpy(d,tmp0.s,4*sizeof(uint32_t));
-	memcpy(d+4,tmp1.s,4*sizeof(uint32_t));
-	memcpy(d+8,tmp2.s,4*sizeof(uint32_t));
-	memcpy(d+12,tmp3.s,4*sizeof(uint32_t));
-	*/
-	/*
-	d[0]=tmp0.s[0];
-	d[1]=tmp0.s[1];
-	d[2]=tmp0.s[2];
-	d[3]=tmp0.s[3];
-	d[4]=tmp1.s[0];
-	d[5]=tmp1.s[1];
-	d[6]=tmp1.s[2];
-	d[7]=tmp1.s[3];
-	d[8]=tmp2.s[0];
-	d[9]=tmp2.s[1];
-	d[10]=tmp2.s[2];
-	d[11]=tmp2.s[3];
-	d[12]=tmp3.s[0];
-	d[13]=tmp3.s[1];
-	d[14]=tmp3.s[2];
-	d[15]=tmp3.s[3];
-	*/
 	memcpy(d,tmp0.s,4*sizeof(dctcoef));
 	memcpy(d+4,tmp1.s,4*sizeof(dctcoef));
 	memcpy(d+8,tmp2.s,4*sizeof(dctcoef));
