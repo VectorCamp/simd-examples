@@ -11,48 +11,41 @@
 // into d
 // REF:
 // https://code.videolan.org/videolan/x264/-/blob/master/common/dct.c?ref_type=heads
-static void dct4x4dc_c(int d[16]) {
+static void dct4x4dc_c(uint16_t d[16]) {
   // hold the intermediate results
   int tmp[16];
 
   // iterate over each row of the 4x4 block (phase 1)
   for (int i = 0; i < 4; i++) {
-    int s01 = d[i * 4 + 0] +
-              d[i * 4 + 1]; // sum of the 1st and 2nd elements in the row
-    int d01 =
-        d[i * 4 + 0] -
-        d[i * 4 + 1]; // diff between the 1st and the 2nd elements in the row
-    int s23 = d[i * 4 + 2] +
-              d[i * 4 + 3]; // sum of the 3d and 4th elements in the row
-    int d23 =
-        d[i * 4 + 2] -
-        d[i * 4 + 3]; // diff between the 3d and the 4th elements in the row
-    // printf("s01: %d, s23: %d, d01: %d, d23: %d\n", d[i * 4 + 0], d[i * 4 +
-    // 1], d[i * 4 + 2], d[i * 4 + 3]);
-    tmp[0 * 4 + i] = s01 + s23; // 1st element of the row
-    tmp[1 * 4 + i] = s01 - s23; // 2nd element of the row
-    tmp[2 * 4 + i] = d01 - d23; // 3d element of the row
-    tmp[3 * 4 + i] = d01 + d23; // 4th element of the row
-    // printf("tmp[0]: %d, tmp[1]: %d, tmp[2]: %d, tmp[3]: %d\n", tmp[0 * 4 +
-    // i], tmp[1 * 4 + i], tmp[2 * 4 + i], tmp[3 * 4 + i]);
+
+    int s01 = d[i * 4 + 0] + d[i * 4 + 1];
+    int d01 = d[i * 4 + 0] - d[i * 4 + 1];
+    int s23 = d[i * 4 + 2] + d[i * 4 + 3];
+    int d23 = d[i * 4 + 2] - d[i * 4 + 3];
+    tmp[0 * 4 + i] = s01 + s23;
+    tmp[1 * 4 + i] = s01 - s23;
+    tmp[2 * 4 + i] = d01 - d23;
+    tmp[3 * 4 + i] = d01 + d23;
   }
 
   // iterates over each row of the 4x4 block (phase 2)
   for (int i = 0; i < 4; i++) {
-
     int s01 = tmp[i * 4 + 0] + tmp[i * 4 + 1];
     int d01 = tmp[i * 4 + 0] - tmp[i * 4 + 1];
     int s23 = tmp[i * 4 + 2] + tmp[i * 4 + 3];
     int d23 = tmp[i * 4 + 2] - tmp[i * 4 + 3];
-    // printf("AFTER: s01: %d, s23: %d, d01: %d, d23: %d\n", s01, s23, d01,
-    // d23);
-    //  The DCT coefficients are scaled by adding 1 and then right-shifting
-    //  by 1 (equivalent to integer division by 2) for rounding.
+
     d[i * 4 + 0] = (s01 + s23 + 1) >> 1;
     d[i * 4 + 1] = (s01 - s23 + 1) >> 1;
     d[i * 4 + 2] = (d01 - d23 + 1) >> 1;
     d[i * 4 + 3] = (d01 + d23 + 1) >> 1;
   }
+}
+
+void print_uint16x4(const char *label, uint16x4_t vector) {
+  uint16_t data[4];
+  vst1_u16(data, vector);
+  printf("%s: [%hu %hu %hu %hu]\n", label, data[0], data[1], data[2], data[3]);
 }
 
 void print_int32x4(const char *label, int32x4_t vector) {
@@ -61,14 +54,20 @@ void print_int32x4(const char *label, int32x4_t vector) {
   printf("%s: [%d %d %d %d]\n", label, data[0], data[1], data[2], data[3]);
 }
 
-static void dct4x4dc_neon(int *d) {
+static void dct4x4dc_neon(uint16_t *d) {
 
-  int32x4_t input0 = vld1q_s32(d);
-  int32x4_t input1 = vld1q_s32(d + 4);
-  int32x4_t input2 = vld1q_s32(d + 8);
-  int32x4_t input3 = vld1q_s32(d + 12);
+  uint16x4_t input0_low = vld1_u16(d);
+  uint16x4_t input1_low = vld1_u16(d + 4);
+  uint16x4_t input2_low = vld1_u16(d + 8);
+  uint16x4_t input3_low = vld1_u16(d + 12);
 
-  // all s01
+  int32x4_t input0 = vreinterpretq_s32_u32(vmovl_u16(input0_low));
+  int32x4_t input1 = vreinterpretq_s32_u32(vmovl_u16(input1_low));
+  int32x4_t input2 = vreinterpretq_s32_u32(vmovl_u16(input2_low));
+  int32x4_t input3 = vreinterpretq_s32_u32(vmovl_u16(input3_low));
+
+  // PHASE 1
+  //  all s01
   int32x4_t result_add_s01 = vaddq_s32(input0, input1);
   // all s23
   int32x4_t result_add_s23 = vaddq_s32(input2, input3);
@@ -97,9 +96,8 @@ static void dct4x4dc_neon(int *d) {
   input2 = vcombine_s32(vget_high_s32(temp_trans0), vget_high_s32(temp_trans2));
   input3 = vcombine_s32(vget_high_s32(temp_trans1), vget_high_s32(temp_trans3));
 
-  // PHASE
-  // 2---------------------------------------------------------------------------
-  // all s01 after
+  // PHASE 2
+  //  all s01 after
   result_add_s01 = vaddq_s32(input0, input1);
   // all s23 after
   result_add_s23 = vaddq_s32(input2, input3);
@@ -117,7 +115,6 @@ static void dct4x4dc_neon(int *d) {
   // d01+d23 all after
   input3 = vaddq_s32(result_sub_d01, result_sub_d23);
 
-  //+1 and shift
   int32x4_t one_vector = vdupq_n_s32(1);
 
   input0 = vshrq_n_s32(vaddq_s32(input0, one_vector), 1);
@@ -125,16 +122,16 @@ static void dct4x4dc_neon(int *d) {
   input2 = vshrq_n_s32(vaddq_s32(input2, one_vector), 1);
   input3 = vshrq_n_s32(vaddq_s32(input3, one_vector), 1);
 
-  // store back
-  vst1q_s32(d, input0);
-  vst1q_s32(d + 4, input1);
-  vst1q_s32(d + 8, input2);
-  vst1q_s32(d + 12, input3);
+  // Store the results back to the memory
+  vst1_u16(d, vmovn_u32(vreinterpretq_u32_s32(input0)));
+  vst1_u16(d + 4, vmovn_u32(vreinterpretq_u32_s32(input1)));
+  vst1_u16(d + 8, vmovn_u32(vreinterpretq_u32_s32(input2)));
+  vst1_u16(d + 12, vmovn_u32(vreinterpretq_u32_s32(input3)));
 }
 
 int main(int argc, char **argv) {
 
-  // handle user's arguement
+  // handle user's argument
   long int LOOPS = 10000000000;
 
   if (argc == 2) {
@@ -152,13 +149,13 @@ int main(int argc, char **argv) {
   srand(time(NULL));
   struct timeval tv1, tv2, tv3, tv4, diff1, diff2;
 
-  int d[16];
-  int *dd = NULL;
-  if (posix_memalign((void **)&dd, 16, 16 * sizeof(int)) != 0) {
+  uint16_t d[16];
+  uint16_t *dd = NULL;
+  if (posix_memalign((void **)&dd, 16, 16 * sizeof(uint16_t)) != 0) {
     perror("posix_memalign failed");
     exit(EXIT_FAILURE);
   }
-  int random_value[16];
+  uint16_t random_value[16];
 
   // initialize original matrix d
   for (int i = 0; i < 16; i++) {
@@ -178,7 +175,7 @@ int main(int argc, char **argv) {
   // print the transformed matrix
   printf("Transformed Matrix (dct) from Scalar function:\n");
   for (int i = 0; i < 16; i++) {
-    printf("%3d ", d[i]);
+    printf("%5d ", d[i]);
     if ((i + 1) % 4 == 0)
       printf("\n");
   }
@@ -198,7 +195,7 @@ int main(int argc, char **argv) {
   // print the transformed matrix
   printf("Transformed Matrix (dct) from NEON function:\n");
   for (int i = 0; i < 16; i++) {
-    printf("%3d ", dd[i]);
+    printf("%5d ", dd[i]);
     if ((i + 1) % 4 == 0)
       printf("\n");
   }
