@@ -92,15 +92,11 @@ dct4x4dc_sse(dctcoef d[16]) {
     __m128i shuffled4 = _mm_shuffle_epi32(totalSum4, _MM_SHUFFLE(2, 3, 3, 2));
     totalSum4 = _mm_add_epi16(totalSum4, shuffled4);
 
-    // store back to d to keep the intermediate results
-    _mm_storel_epi64((__m128i *) &d[0], totalSum1);
-    _mm_storel_epi64((__m128i *) &d[4], totalSum2);
-    _mm_storel_epi64((__m128i *) &d[8], totalSum3);
-    _mm_storel_epi64((__m128i *) &d[12], totalSum4);
-
+    // instead of storing back to d ,keep the intermediate results
     // PHASE 2
-    row1row2 = _mm_loadu_si128((__m128i *) &d[0]);
-    row3row4 = _mm_loadu_si128((__m128i *) &d[8]);
+    // transpose again
+    row1row2 = _mm_unpacklo_epi64(totalSum1, totalSum2);
+    row3row4 = _mm_unpacklo_epi64(totalSum3, totalSum4);
 
     __m128i ones = _mm_set1_epi32(1);   // to divide
     tmp1 = _mm_unpacklo_epi16(row1row2, row3row4);
@@ -153,6 +149,7 @@ dct4x4dc_sse(dctcoef d[16]) {
     _mm_storel_epi64((__m128i *) &d[8], totalSum31);
     _mm_storel_epi64((__m128i *) &d[12], totalSum41);
 
+    // transpose again
     row1row2 = _mm_loadu_si128((__m128i *) &d[0]);
     row3row4 = _mm_loadu_si128((__m128i *) &d[8]);   // load instead of set
     tmp1 = _mm_unpacklo_epi16(row1row2, row3row4);
