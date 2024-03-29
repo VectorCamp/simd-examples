@@ -5,7 +5,7 @@
 #include <time.h>
 
 #define N    100
-#define ITER 1
+#define ITER 100000
 typedef uint16_t dctcoef;
 void
 print_vector(__m128i v) {
@@ -168,17 +168,18 @@ main() {
             matrix[i] = rand() & 0xFF;   // 8 bit unsigned
             matrix2[i] = matrix[i];
         }
+        /*
         printf("Original matrix:\n");
         for (int i = 0; i < 16; i += 4) {
             printf("%02x %02x %02x %02x\n", matrix[i], matrix[i + 1], matrix[i + 2], matrix[i + 3]);
         }
-
+        */
         clock_gettime(CLOCK_MONOTONIC, &start);
         dct4x4dc(matrix);
         clock_gettime(CLOCK_MONOTONIC, &mid);
         dct4x4dc_sse(matrix2);
         clock_gettime(CLOCK_MONOTONIC, &end);
-
+        /*
         printf("\nMatrix after dct4x4dc:\n");
         for (int i = 0; i < 16; i += 4) {
             printf("%02x %02x %02x %02x\n", matrix[i], matrix[i + 1], matrix[i + 2], matrix[i + 3]);
@@ -188,7 +189,7 @@ main() {
         for (int i = 0; i < 16; i += 4) {
             printf("%02x %02x %02x %02x\n", matrix2[i], matrix2[i + 1], matrix2[i + 2], matrix2[i + 3]);
         }
-
+        */
         long seconds1 = mid.tv_sec - start.tv_sec;
         long nanoseconds1 = mid.tv_nsec - start.tv_nsec;
         if (nanoseconds1 < 0) {
