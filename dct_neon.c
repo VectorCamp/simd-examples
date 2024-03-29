@@ -17,118 +17,120 @@ static void dct4x4dc_c(int d[16]) {
 
   // iterate over each row of the 4x4 block (phase 1)
   for (int i = 0; i < 4; i++) {
-    int s01 = d[i * 4 + 0] + d[i * 4 + 1]; // sum of the 1st and 2nd elements in the row
-    int d01 = d[i * 4 + 0] - d[i * 4 + 1]; // diff between the 1st and the 2nd elements in the row
-    int s23 = d[i * 4 + 2] + d[i * 4 + 3]; // sum of the 3d and 4th elements in the row
-    int d23 = d[i * 4 + 2] - d[i * 4 + 3]; // diff between the 3d and the 4th elements in the row
-    //printf("s01: %d, s23: %d, d01: %d, d23: %d\n", d[i * 4 + 0], d[i * 4 + 1], d[i * 4 + 2], d[i * 4 + 3]);
+    int s01 = d[i * 4 + 0] +
+              d[i * 4 + 1]; // sum of the 1st and 2nd elements in the row
+    int d01 =
+        d[i * 4 + 0] -
+        d[i * 4 + 1]; // diff between the 1st and the 2nd elements in the row
+    int s23 = d[i * 4 + 2] +
+              d[i * 4 + 3]; // sum of the 3d and 4th elements in the row
+    int d23 =
+        d[i * 4 + 2] -
+        d[i * 4 + 3]; // diff between the 3d and the 4th elements in the row
+    // printf("s01: %d, s23: %d, d01: %d, d23: %d\n", d[i * 4 + 0], d[i * 4 +
+    // 1], d[i * 4 + 2], d[i * 4 + 3]);
     tmp[0 * 4 + i] = s01 + s23; // 1st element of the row
     tmp[1 * 4 + i] = s01 - s23; // 2nd element of the row
     tmp[2 * 4 + i] = d01 - d23; // 3d element of the row
     tmp[3 * 4 + i] = d01 + d23; // 4th element of the row
-    //printf("tmp[0]: %d, tmp[1]: %d, tmp[2]: %d, tmp[3]: %d\n", tmp[0 * 4 + i], tmp[1 * 4 + i], tmp[2 * 4 + i], tmp[3 * 4 + i]);
-
+    // printf("tmp[0]: %d, tmp[1]: %d, tmp[2]: %d, tmp[3]: %d\n", tmp[0 * 4 +
+    // i], tmp[1 * 4 + i], tmp[2 * 4 + i], tmp[3 * 4 + i]);
   }
 
   // iterates over each row of the 4x4 block (phase 2)
   for (int i = 0; i < 4; i++) {
-    
+
     int s01 = tmp[i * 4 + 0] + tmp[i * 4 + 1];
     int d01 = tmp[i * 4 + 0] - tmp[i * 4 + 1];
     int s23 = tmp[i * 4 + 2] + tmp[i * 4 + 3];
     int d23 = tmp[i * 4 + 2] - tmp[i * 4 + 3];
-    //printf("AFTER: s01: %d, s23: %d, d01: %d, d23: %d\n", s01, s23, d01, d23);
-    // The DCT coefficients are scaled by adding 1 and then right-shifting
-    // by 1 (equivalent to integer division by 2) for rounding.
+    // printf("AFTER: s01: %d, s23: %d, d01: %d, d23: %d\n", s01, s23, d01,
+    // d23);
+    //  The DCT coefficients are scaled by adding 1 and then right-shifting
+    //  by 1 (equivalent to integer division by 2) for rounding.
     d[i * 4 + 0] = (s01 + s23 + 1) >> 1;
     d[i * 4 + 1] = (s01 - s23 + 1) >> 1;
     d[i * 4 + 2] = (d01 - d23 + 1) >> 1;
     d[i * 4 + 3] = (d01 + d23 + 1) >> 1;
-    
   }
 }
 
-void print_int32x4(const char* label, int32x4_t vector) {
-    int32_t data[4];
-    vst1q_s32(data, vector);
-    printf("%s: [%d %d %d %d]\n", label, data[0], data[1], data[2], data[3]);
+void print_int32x4(const char *label, int32x4_t vector) {
+  int32_t data[4];
+  vst1q_s32(data, vector);
+  printf("%s: [%d %d %d %d]\n", label, data[0], data[1], data[2], data[3]);
 }
-
-
 
 static void dct4x4dc_neon(int *d) {
-    
-    int32x4_t input0 = vld1q_s32(d);
-    int32x4_t input1 = vld1q_s32(d + 4);
-    int32x4_t input2 = vld1q_s32(d + 8);
-    int32x4_t input3 = vld1q_s32(d + 12);
 
-    
-     //all s01
-    int32x4_t result_add_s01 = vaddq_s32(input0, input1);
-    //all s23
-    int32x4_t result_add_s23 = vaddq_s32(input2, input3);
-    //all d01
-    int32x4_t result_sub_d01 = vsubq_s32(input0, input1);
-    //all d23
-    int32x4_t result_sub_d23 = vsubq_s32(input2, input3);
+  int32x4_t input0 = vld1q_s32(d);
+  int32x4_t input1 = vld1q_s32(d + 4);
+  int32x4_t input2 = vld1q_s32(d + 8);
+  int32x4_t input3 = vld1q_s32(d + 12);
 
-    //s01+s23 all
-    input0 = vaddq_s32(result_add_s01, result_add_s23);
-    //s01-s23 all
-    input1 = vsubq_s32(result_add_s01, result_add_s23);
-    //d01-d23 all
-    input2 = vsubq_s32(result_sub_d01, result_sub_d23);
-    //d01+d23 all
-    input3 = vaddq_s32(result_sub_d01, result_sub_d23);
+  // all s01
+  int32x4_t result_add_s01 = vaddq_s32(input0, input1);
+  // all s23
+  int32x4_t result_add_s23 = vaddq_s32(input2, input3);
+  // all d01
+  int32x4_t result_sub_d01 = vsubq_s32(input0, input1);
+  // all d23
+  int32x4_t result_sub_d23 = vsubq_s32(input2, input3);
 
+  // s01+s23 all
+  input0 = vaddq_s32(result_add_s01, result_add_s23);
+  // s01-s23 all
+  input1 = vsubq_s32(result_add_s01, result_add_s23);
+  // d01-d23 all
+  input2 = vsubq_s32(result_sub_d01, result_sub_d23);
+  // d01+d23 all
+  input3 = vaddq_s32(result_sub_d01, result_sub_d23);
 
-    //BEFORE GOING TO PHASE 2, I NEED TO TRANPOSE
-    int32x4x2_t temp_transposed1 = vtrnq_s32(input0, input1);
-    int32x4x2_t temp_transposed2 = vtrnq_s32(input2, input3);
+  // BEFORE GOING TO PHASE 2, I NEED TO TRANPOSE
+  int32x4_t temp_trans0 = vtrn1q_s32(input0, input1);
+  int32x4_t temp_trans1 = vtrn2q_s32(input0, input1);
+  int32x4_t temp_trans2 = vtrn1q_s32(input2, input3);
+  int32x4_t temp_trans3 = vtrn2q_s32(input2, input3);
 
-    input0 = vcombine_s32(vget_low_s32(temp_transposed1.val[0]), vget_low_s32(temp_transposed2.val[0]));
-    input1 = vcombine_s32(vget_low_s32(temp_transposed1.val[1]), vget_low_s32(temp_transposed2.val[1]));
-    input2 = vcombine_s32(vget_high_s32(temp_transposed1.val[0]), vget_high_s32(temp_transposed2.val[0]));
-    input3 = vcombine_s32(vget_high_s32(temp_transposed1.val[1]), vget_high_s32(temp_transposed2.val[1]));
+  input0 = vcombine_s32(vget_low_s32(temp_trans0), vget_low_s32(temp_trans2));
+  input1 = vcombine_s32(vget_low_s32(temp_trans1), vget_low_s32(temp_trans3));
+  input2 = vcombine_s32(vget_high_s32(temp_trans0), vget_high_s32(temp_trans2));
+  input3 = vcombine_s32(vget_high_s32(temp_trans1), vget_high_s32(temp_trans3));
 
+  // PHASE
+  // 2---------------------------------------------------------------------------
+  // all s01 after
+  result_add_s01 = vaddq_s32(input0, input1);
+  // all s23 after
+  result_add_s23 = vaddq_s32(input2, input3);
+  // all d01 after
+  result_sub_d01 = vsubq_s32(input0, input1);
+  // all d23 after
+  result_sub_d23 = vsubq_s32(input2, input3);
 
-    //PHASE 2---------------------------------------------------------------------------
-    //all s01 after
-    result_add_s01 = vaddq_s32(input0, input1);
-    //all s23 after
-    result_add_s23 = vaddq_s32(input2, input3);
-    //all d01 after
-    result_sub_d01 = vsubq_s32(input0, input1);
-    //all d23 after
-    result_sub_d23 = vsubq_s32(input2, input3);
-    
-    //s01+s23 all after
-    input0 = vaddq_s32(result_add_s01, result_add_s23);
-    //s01-s23 all after
-    input1 = vsubq_s32(result_add_s01, result_add_s23);
-    //d01-d23 all after 
-    input2 = vsubq_s32(result_sub_d01, result_sub_d23);
-    //d01+d23 all after
-    input3 = vaddq_s32(result_sub_d01, result_sub_d23);
+  // s01+s23 all after
+  input0 = vaddq_s32(result_add_s01, result_add_s23);
+  // s01-s23 all after
+  input1 = vsubq_s32(result_add_s01, result_add_s23);
+  // d01-d23 all after
+  input2 = vsubq_s32(result_sub_d01, result_sub_d23);
+  // d01+d23 all after
+  input3 = vaddq_s32(result_sub_d01, result_sub_d23);
 
-    //+1 and shift
-    int32x4_t one_vector = vdupq_n_s32(1);
-    
-    input0 = vshrq_n_s32(vaddq_s32(input0, one_vector), 1);
-    input1 = vshrq_n_s32(vaddq_s32(input1, one_vector), 1);
-    input2 = vshrq_n_s32(vaddq_s32(input2, one_vector), 1);
-    input3 = vshrq_n_s32(vaddq_s32(input3, one_vector), 1);
+  //+1 and shift
+  int32x4_t one_vector = vdupq_n_s32(1);
 
-    //store back
-    vst1q_s32(d, input0);
-    vst1q_s32(d + 4, input1);
-    vst1q_s32(d + 8, input2);
-    vst1q_s32(d + 12, input3);
+  input0 = vshrq_n_s32(vaddq_s32(input0, one_vector), 1);
+  input1 = vshrq_n_s32(vaddq_s32(input1, one_vector), 1);
+  input2 = vshrq_n_s32(vaddq_s32(input2, one_vector), 1);
+  input3 = vshrq_n_s32(vaddq_s32(input3, one_vector), 1);
 
+  // store back
+  vst1q_s32(d, input0);
+  vst1q_s32(d + 4, input1);
+  vst1q_s32(d + 8, input2);
+  vst1q_s32(d + 12, input3);
 }
-
-
 
 int main(int argc, char **argv) {
 
