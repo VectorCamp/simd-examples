@@ -94,7 +94,7 @@ dct4x4dc_sse(dctcoef d[16]) {
 
     // instead of storing back to d ,keep the intermediate results
     // PHASE 2
-    // transpose again
+    // transpose in vectors again(no stores)
     row1row2 = _mm_unpacklo_epi64(totalSum1, totalSum2);
     row3row4 = _mm_unpacklo_epi64(totalSum3, totalSum4);
 
@@ -144,14 +144,9 @@ dct4x4dc_sse(dctcoef d[16]) {
     totalSum41 = _mm_and_si128(totalSum41, mask);   // keep only the lower 16 bits of each 32-bit integer
     totalSum41 = _mm_packus_epi32(totalSum41, zero);
 
-    _mm_storel_epi64((__m128i *) &d[0], totalSum11);
-    _mm_storel_epi64((__m128i *) &d[4], totalSum21);
-    _mm_storel_epi64((__m128i *) &d[8], totalSum31);
-    _mm_storel_epi64((__m128i *) &d[12], totalSum41);
-
-    // transpose again
-    row1row2 = _mm_loadu_si128((__m128i *) &d[0]);
-    row3row4 = _mm_loadu_si128((__m128i *) &d[8]);   // load instead of set
+    // transpose in vectors again(no stores)
+    row1row2 = _mm_unpacklo_epi64(totalSum11, totalSum21);
+    row3row4 = _mm_unpacklo_epi64(totalSum31, totalSum41);
     tmp1 = _mm_unpacklo_epi16(row1row2, row3row4);
     tmp3 = _mm_unpackhi_epi16(row1row2, row3row4);
     _mm_storel_epi64((__m128i *) &d[0], _mm_move_epi64(_mm_unpacklo_epi16(tmp1, tmp3)));
