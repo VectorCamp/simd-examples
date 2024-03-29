@@ -5,7 +5,7 @@
 #include <time.h>
 
 #define N    100
-#define ITER 100000
+#define ITER 1
 typedef uint16_t dctcoef;
 void
 print_vector(__m128i v) {
@@ -145,14 +145,14 @@ dct4x4dc_sse(dctcoef d[16]) {
     totalSum41 = _mm_packus_epi32(totalSum41, zero);
 
     // transpose in vectors again(no stores)
-    row1row2 = _mm_unpacklo_epi64(totalSum11, totalSum21);
+    row1row2 = _mm_unpacklo_epi64(totalSum11, totalSum21);   // interleave 64bits
     row3row4 = _mm_unpacklo_epi64(totalSum31, totalSum41);
-    tmp1 = _mm_unpacklo_epi16(row1row2, row3row4);
+    tmp1 = _mm_unpacklo_epi16(row1row2, row3row4);   // interleave the lower 8 16bit integers
     tmp3 = _mm_unpackhi_epi16(row1row2, row3row4);
-    _mm_storel_epi64((__m128i *) &d[0], _mm_move_epi64(_mm_unpacklo_epi16(tmp1, tmp3)));
-    _mm_storel_epi64((__m128i *) &d[4], _mm_srli_si128(_mm_unpacklo_epi16(tmp1, tmp3), 8));
-    _mm_storel_epi64((__m128i *) &d[8], _mm_move_epi64(_mm_unpackhi_epi16(tmp1, tmp3)));
-    _mm_storel_epi64((__m128i *) &d[12], _mm_srli_si128(_mm_unpackhi_epi16(tmp1, tmp3), 8));
+    row1row2 = _mm_unpacklo_epi16(tmp1, tmp3);
+    row3row4 = _mm_unpackhi_epi16(tmp1, tmp3);
+    _mm_storeu_si128((__m128i *) d, row1row2);   // store 128bit in one go
+    _mm_storeu_si128((__m128i *) &d[8], row3row4);
 }
 int
 main() {
@@ -179,7 +179,7 @@ main() {
         clock_gettime(CLOCK_MONOTONIC, &mid);
         dct4x4dc_sse(matrix2);
         clock_gettime(CLOCK_MONOTONIC, &end);
-        /*
+
         printf("\nMatrix after dct4x4dc:\n");
         for (int i = 0; i < 16; i += 4) {
             printf("%02x %02x %02x %02x\n", matrix[i], matrix[i + 1], matrix[i + 2], matrix[i + 3]);
@@ -189,7 +189,7 @@ main() {
         for (int i = 0; i < 16; i += 4) {
             printf("%02x %02x %02x %02x\n", matrix2[i], matrix2[i + 1], matrix2[i + 2], matrix2[i + 3]);
         }
-        */
+
         long seconds1 = mid.tv_sec - start.tv_sec;
         long nanoseconds1 = mid.tv_nsec - start.tv_nsec;
         if (nanoseconds1 < 0) {
